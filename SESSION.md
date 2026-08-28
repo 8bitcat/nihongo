@@ -1,12 +1,17 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-08-28 (v1 byggd och verifierad)
+Senast uppdaterad: 2026-08-28 (v2.0 — bilder + gamification)
 
 ## Status
 
-**v1 klar och röktestad headless (Playwright, inga JS-fel, 12 screenshots).**
-Alla kärnflöden fungerar: hem → lektion (intro → drill → skrivträning) → resultat,
-ordförråd, kanji, grammatik, SRS-repetition, kana-tabeller, blixtmatch, JLPT-prov med timer.
+**v2.0 klar och röktestad headless (Playwright, inga JS-fel).**
+v1-kärnan (lektioner, SRS, prov) + v2: bildstöd (emoji via dual coding — 92 kana + 200 av 334 ord,
+tilldelade via multi-agent-workflow), dagliga uppdrag, combo med viktad XP, Kana-regn-arkadspel
+(SRS-viktat urval, guldtecken, recap + riktad drill), bossar (Oni/Kappa/Kitsune — produktionstunga,
+3 liv), 17 utmärkelser med toasts, belöningskista, rang-upp-firande, ♨️ streak-frys,
+"Vägen till N5"-progressbar. Nya filer: [js/gamify.js](js/gamify.js), [js/arcade.js](js/arcade.js).
+Designbeslut grundade i research-workflow (dual coding/picture superiority, gamification-forskning,
+minigame-design) — se CLAUDE.md punkt 7–8 för reglerna.
 
 ## Filkarta
 

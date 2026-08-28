@@ -16,12 +16,18 @@ ordförråd, kanji och grammatik — hela vägen till ett JLPT N5-mockprov.
 
 Speldesignen bygger på research (2026-08-28, källor i SESSION.md):
 
-1. **Mnemonics** — varje kana har en svensk minnesbild. Tenten/kombinationer lärs som REGLER, inte nya bilder.
+1. **Mnemonics** — varje kana har en svensk minnesbild + emoji. Tenten/kombinationer lärs som REGLER, inte nya bilder.
 2. **SRS/spaced repetition** — Leitner-boxar med växande intervall ([js/state.js](js/state.js)). Fel → ner två boxar.
 3. **Active recall-stege** — låg box: flerval → mellan: lyssna → hög: skriv romaji → topp: rita ur minnet.
 4. **Handskrift** — canvas-spårning för motoriskt minne ([js/exercises.js](js/exercises.js) `drawQ`).
 5. **Ljud alltid** — tecken/ord läses upp när de visas; hörförståelse är egen frågetyp och egen provdel.
 6. **Små portioner** — ~5 kana eller ~8 ord per lektion (mer sänker retention).
+7. **Bildstöd (dual coding)** — emoji på konkreta ord/kana-minnesbilder. REGLER (Carpenter & Olson):
+   bild vid FÖRSTA presentationen och som cue/facit i retrieval — aldrig ledtråd bredvid rätt svar;
+   abstrakta ord får INGEN bild (kan hämma); bilden fasas ut i SRS från box 2.
+8. **Gamification-integritet** — XP viktas efter svårighet (skriva ×2, lyssna ×1.5, flerval ×1);
+   bossar kräver produktion; combo belönar noggrannhet (ingen tidspress); streak har ♨️-frys
+   (förtjänas var 7:e dag) mot streak-ångest; belöningskistan ger bara XP, aldrig innehåll bakom slump.
 
 ## Nivåstruktur N5→N1
 

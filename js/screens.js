@@ -11,6 +11,8 @@ import { KANJI_LESSONS, allKanji } from '../data/kanji.js';
 import { GRAMMAR_LESSONS } from '../data/grammar.js';
 import { pick, shuffle, kanaToRomaji } from './kanaUtils.js';
 import { APP_VERSION } from './version.js';
+import { questsForToday, questProgress, questClaimed, claimQuest, track, checkAchievements,
+         checkRankUp, rollReward, showToast, ACHIEVEMENTS } from './gamify.js';
 
 const CHUNK = 8; // ord per ordförrådslektion (forskning: 5–10 nya/dag)
 
@@ -44,6 +46,8 @@ function audioNotice(root) {
 
 // ---------- HEM ----------
 export function renderHome(root, nav) {
+  checkRankUp();
+  checkAchievements();
   const r = rank();
   const hero = el('div', 'hero');
   hero.appendChild(el('div', 'torii', '⛩️'));
@@ -56,7 +60,7 @@ export function renderHome(root, nav) {
   chips.innerHTML =
     `<span class="chip">${r.emoji} ${escapeHTML(r.name)}</span>` +
     `<span class="chip">⚡ <b>${S.xp}</b> XP</span>` +
-    `<span class="chip">🔥 <b>${streakDays()}</b> dagar</span>`;
+    `<span class="chip">🔥 <b>${streakDays()}</b> dagar${(S.streak.freezes || 0) > 0 ? ' · ♨️×' + S.streak.freezes : ''}</span>`;
   root.appendChild(chips);
 
   // Nivåväljare N5–N1
@@ -85,6 +89,28 @@ export function renderHome(root, nav) {
   daily.appendChild(startBtn);
   root.appendChild(daily);
 
+  // Dagens uppdrag — tre roterande mål som styr mot bredd (repetition/produktion/lyssning)
+  const quests = questsForToday();
+  const qCard = el('div', 'quest-card');
+  qCard.appendChild(el('div', 'sectionlabel', '⛩️ Dagens uppdrag'));
+  for (const q of quests) {
+    const prog = Math.min(questProgress(q), q.target);
+    const done = prog >= q.target;
+    const claimed = questClaimed(q);
+    const row = el('div', 'quest-row' + (claimed ? ' claimed' : ''));
+    row.innerHTML = `<span class="q-emoji">${q.emoji}</span>
+      <span class="q-mid"><span class="q-label">${escapeHTML(q.label)}</span>
+      <span class="progressbar"><span style="width:${Math.round(100 * prog / q.target)}%"></span></span></span>
+      <span class="q-count">${claimed ? '✅' : prog + '/' + q.target}</span>`;
+    if (done && !claimed) {
+      const btn = el('button', 'btn small', `+${q.xp} XP`);
+      btn.onclick = () => { claimQuest(q); nav.go('home'); };
+      row.appendChild(btn);
+    }
+    qCard.appendChild(row);
+  }
+  root.appendChild(qCard);
+
   // Moduler
   const mods = el('div', 'modules');
   const hiraLessons = kanaLessonsFor('hira'), kataLessons = kanaLessonsFor('kata');
@@ -94,6 +120,15 @@ export function renderHome(root, nav) {
   const kanjiDone = KANJI_LESSONS.filter(l => lessonStars(l.id) > 0).length;
   const gramDone = GRAMMAR_LESSONS.filter(l => lessonStars(l.id) > 0).length;
 
+  // Vägen till N5 — total viktad progress
+  const overall = 0.15 * (hiraDone / hiraLessons.length) + 0.15 * (kataDone / kataLessons.length)
+    + 0.30 * (vocabInSrs / VOCAB.length) + 0.20 * (kanjiDone / KANJI_LESSONS.length)
+    + 0.10 * (gramDone / GRAMMAR_LESSONS.length) + 0.10 * (S.bestTest?.pass ? 1 : 0);
+  const journey = el('div', 'journey');
+  journey.innerHTML = `<span>⛩️</span><span class="progressbar"><span style="width:${Math.round(overall * 100)}%"></span></span><span>🗻</span>
+    <span class="j-pct">${Math.round(overall * 100)} % av vägen till N5</span>`;
+  root.appendChild(journey);
+
   const items = [
     { emoji:'🌸', name:'Hiragana', desc:'Grundskriften — börja här!', pct: hiraDone / hiraLessons.length, go:['kana', { script:'hira' }] },
     { emoji:'⚡', name:'Katakana', desc:'För lånord — kaffe, spel, Sverige…', pct: kataDone / kataLessons.length, go:['kana', { script:'kata' }] },
@@ -101,6 +136,8 @@ export function renderHome(root, nav) {
     { emoji:'🖌️', name:'Kanji', desc:'80 N5-kanji med exempel', pct: kanjiDone / KANJI_LESSONS.length, go:['kanjiModule'] },
     { emoji:'🧩', name:'Grammatik', desc:'Partiklar, verb & adjektiv', pct: gramDone / GRAMMAR_LESSONS.length, go:['grammarModule'] },
     { emoji:'🎓', name:'JLPT N5-prov', desc: S.bestTest ? `Bästa: ${S.bestTest.score}/180 ${S.bestTest.pass ? '✔ godkänd' : ''}` : 'Testa dig som på riktiga provet', pct: S.bestTest?.pass ? 1 : 0, go:['testIntro'] },
+    { emoji:'🌧️', name:'Kana-regn', desc: (S.highscores.kanaRain ? 'Rekord: ' + S.highscores.kanaRain + ' poäng' : 'Arkadspel — skriv romaji innan tecknen landar!'), pct: Math.min(1, (S.highscores.kanaRain || 0) / 50), go:['arcade'] },
+    { emoji:'🏅', name:'Utmärkelser', desc: S.badges.length + ' av ' + ACHIEVEMENTS.length + ' upplåsta', pct: S.badges.length / ACHIEVEMENTS.length, go:['achievements'] },
   ];
   for (const m of items) {
     const card = el('button', 'module');
@@ -154,6 +191,96 @@ export function renderKanaModule(root, nav, { script }) {
     list.appendChild(row);
   });
   root.appendChild(list);
+  root.appendChild(bossRow(nav, 'boss-' + script, script === 'hira' ? '👹 Portvakten: Oni' : '🐢 Portvakten: Kappa',
+    lessons.every(l => lessonStars(l.id) > 0), 'Klara alla lektioner först'));
+}
+
+// Boss-rad: produktionstungt mästerskapsprov som avslutar en modul
+function bossRow(nav, bossId, title, unlocked, lockHint) {
+  const beaten = lessonStars(bossId) > 0;
+  const row = el('button', 'lesson-row boss-row' + (unlocked ? '' : ' locked'));
+  row.innerHTML = `<span class="num">${unlocked ? '⚔️' : '🔒'}</span>
+    <span class="mid"><span class="title">${escapeHTML(title)}</span>
+    <span class="preview">${beaten ? '✅ Besegrad! (kan utmanas igen)' : unlocked ? 'Bara produktion: skriv, lyssna, rita. Max 2 fel!' : escapeHTML(lockHint)}</span></span>
+    <span class="stars">${beaten ? '👑' : ''}</span>`;
+  if (unlocked) row.onclick = () => nav.go('boss', { bossId });
+  return row;
+}
+
+export function renderBoss(root, nav, { bossId }) {
+  const conf = {
+    'boss-hira': { name: '👹 Oni — hiraganas portvakt', script: 'hira', backTo: 'kana', backParams: { script: 'hira' } },
+    'boss-kata': { name: '🐢 Kappa — katakanas portvakt', script: 'kata', backTo: 'kana', backParams: { script: 'kata' } },
+    'boss-kanji': { name: '🦊 Kitsune — kanjins portvakt', script: null, backTo: 'kanjiModule', backParams: undefined },
+  }[bossId];
+  topbar(root, nav, conf.name, conf.backTo, conf.backParams);
+  const host = el('div');
+  root.appendChild(host);
+  host.appendChild(el('div', 'prompt-label center', 'Mästerskapsprov: dina SVAGASTE tecken, mest produktion. Tre liv — max två fel!'));
+
+  let qs;
+  if (conf.script) {
+    // Kana-boss: svagaste tecknen först, skriv-tungt
+    const chars = allKanaItems()
+      .filter(i => i.script === conf.script && i.k.length === 1)
+      .sort((a, b) => srsBox(a.id) - srsBox(b.id));
+    const chosen = chars.slice(0, 14);
+    qs = shuffle([
+      ...chosen.slice(0, 8).map(c => typeQ({ promptJP: c.k, speakText: c.k, targetKana: c.k, itemId: c.id })),
+      ...chosen.slice(8, 12).map(c => {
+        const pool = conf.script === 'kata' ? KATAKANA : HIRAGANA;
+        const { options, correctIdx } = mcOptions(c, pool, 3, x => x.k);
+        return mcQ({ prompt: 'Lyssna — vilket tecken?', speakText: c.k, autoSpeak: true, qtype: 'listen',
+          options: options.map(o => ({ label: o.k, jp: true })), correctIdx, itemId: c.id });
+      }),
+      ...chosen.slice(12, 14).map(c => drawQ({ glyph: c.k, label: c.r, speakText: c.k, itemId: c.id, blind: true })),
+    ]);
+  } else {
+    // Kanji-boss: svagaste kanjina
+    const all = allKanji().sort((a, b) => srsBox(a.id) - srsBox(b.id));
+    qs = kanjiDrill(all.slice(0, 8), all).slice(0, 14);
+  }
+
+  runDrill(host, qs, {
+    maxWrong: 2,
+    noRequeue: true,
+    onFinish(res) {
+      const first = lessonStars(bossId) === 0;
+      setLessonStars(bossId, 3);
+      addXP(first ? 60 : 20);
+      touchStreak();
+      checkAchievements();
+      confetti();
+      nav.go('result', {
+        title: 'BOSSEN BESEGRAD! 勝利！', stars: 3,
+        detail: `${res.correctFirstTry} av ${res.total} rätt${first ? ' · +60 XP' : ' · +20 XP (omkamp)'}`,
+        backTo: conf.backTo, backParams: conf.backParams,
+      });
+    },
+    onFail(res) {
+      nav.go('result', {
+        title: 'Bossen står kvar… 頑張って！', stars: 0, chest: false,
+        detail: `Du klarade ${res.correctFirstTry} frågor — repetera dina svaga tecken och utmana igen!`,
+        backTo: conf.backTo, backParams: conf.backParams,
+      });
+    },
+  });
+}
+
+// ---------- UTMÄRKELSER ----------
+export function renderAchievements(root, nav) {
+  topbar(root, nav, '🏅 Utmärkelser');
+  root.appendChild(el('div', 'prompt-label center', `${S.badges.length} av ${ACHIEVEMENTS.length} upplåsta — varje ger +10 XP`));
+  const grid = el('div', 'badge-grid');
+  for (const a of ACHIEVEMENTS) {
+    const got = S.badges.includes(a.id);
+    const card = el('div', 'badge' + (got ? ' unlocked' : ''));
+    card.innerHTML = `<span class="b-emoji">${got ? a.emoji : '❔'}</span>
+      <span class="b-name">${escapeHTML(a.name)}</span>
+      <span class="b-desc">${escapeHTML(a.desc)}</span>`;
+    grid.appendChild(card);
+  }
+  root.appendChild(grid);
 }
 
 export function renderKanaTable(root, nav, { script }) {
@@ -230,7 +357,9 @@ export function renderKanaLesson(root, nav, { lessonId }) {
     const sp = el('button', 'speakbtn', '🔊');
     sp.onclick = () => speak(c.k, { rate: S.settings.slowAudio ? 0.7 : 0.9 });
     ex.appendChild(sp);
-    ex.appendChild(el('div', 'mnemonic', `<span class="label">Minnesbild</span>${escapeHTML(c.m)}`));
+    ex.appendChild(el('div', 'mnemonic',
+      (c.e ? `<div class="mnemonic-img">${escapeHTML(c.e)}</div>` : '') +
+      `<span class="label">Minnesbild</span>${escapeHTML(c.m)}`));
     const row = el('div', 'continue-row');
     if (i > 0) {
       const prev = el('button', 'btn secondary', '‹ Förra');
@@ -325,6 +454,8 @@ export function renderKanaLesson(root, nav, { lessonId }) {
     setLessonStars(lessonId, stars);
     addXP(10 + stars * 5);
     touchStreak();
+    track('lesson', 1);
+    checkAchievements();
     confetti();
     const lessons = kanaLessonsFor(lesson.script);
     const idx = lessons.findIndex(l => l.id === lessonId);
@@ -396,6 +527,7 @@ export function renderVocabLesson(root, nav, { catId, chunk }) {
     const w = words[i];
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label', `Nytt ord ${i + 1} av ${words.length}`));
+    if (w.e) ex.appendChild(el('div', 'vocab-img', escapeHTML(w.e)));
     ex.appendChild(el('div', 'medglyph', escapeHTML(w.kana)));
     ex.appendChild(el('div', 'kana-preview', escapeHTML(kanaToRomaji(w.kana))));
     if (w.kanji) ex.appendChild(el('div', 'prompt-label', 'Med kanji: <span class="jp" style="font-size:1.4rem">' + escapeHTML(w.kanji) + '</span>'));
@@ -437,6 +569,8 @@ export function renderVocabLesson(root, nav, { catId, chunk }) {
         setLessonStars(lid, stars);
         addXP(10 + stars * 5);
         touchStreak();
+        track('lesson', 1);
+        checkAchievements();
         confetti();
         const total = VOCAB.filter(w => w.cat === catId).length;
         const hasNext = (chunk + 1) * CHUNK < total;
@@ -467,6 +601,8 @@ export function renderKanjiModule(root, nav) {
     list.appendChild(row);
   });
   root.appendChild(list);
+  root.appendChild(bossRow(nav, 'boss-kanji', '🦊 Portvakten: Kitsune',
+    KANJI_LESSONS.every(l => lessonStars(l.id) > 0), 'Klara alla kanji-lektioner först'));
 }
 
 export function renderKanjiLesson(root, nav, { lessonId }) {
@@ -522,6 +658,8 @@ export function renderKanjiLesson(root, nav, { lessonId }) {
         setLessonStars(lessonId, stars);
         addXP(12 + stars * 5);
         touchStreak();
+        track('lesson', 1);
+        checkAchievements();
         confetti();
         const idx = KANJI_LESSONS.findIndex(l => l.id === lessonId);
         const nextL = KANJI_LESSONS[idx + 1];
@@ -598,6 +736,8 @@ export function renderGrammarLesson(root, nav, { lessonId }) {
         setLessonStars(lessonId, stars);
         addXP(10 + stars * 5);
         touchStreak();
+        track('lesson', 1);
+        checkAchievements();
         confetti();
         const idx = GRAMMAR_LESSONS.findIndex(l => l.id === lessonId);
         const nextL = GRAMMAR_LESSONS[idx + 1];
@@ -658,8 +798,10 @@ export function renderReview(root, nav) {
         qs.push(mcQ({ prompt: 'Lyssna — vad betyder ordet?', speakText: w.kana, autoSpeak: true,
           options: options.map(o => ({ label: o.sv })), correctIdx, itemId: id }));
       } else {
+        // Låg box: bilden får stötta (dual coding) — fasas ut från box 2
         const { options, correctIdx } = mcOptions(w, VOCAB, 3, x => x.sv);
         qs.push(mcQ({ prompt: 'Vad betyder ordet?', promptJP: w.kana, speakText: w.kana,
+          promptEmoji: box < 2 && w.e ? w.e : undefined,
           options: options.map(o => ({ label: o.sv })), correctIdx, itemId: id }));
       }
     } else if (kanjiItems.has(id)) {
@@ -686,6 +828,8 @@ export function renderReview(root, nav) {
     onFinish(res) {
       addXP(5);
       touchStreak();
+      track('review', res.total);
+      checkAchievements();
       confetti();
       nav.go('result', {
         title: 'Repetition klar! お疲れ様！', stars: 0,
@@ -697,7 +841,8 @@ export function renderReview(root, nav) {
 }
 
 // ---------- RESULTAT ----------
-export function renderResult(root, nav, { title, stars, detail, backTo = 'home', backParams, nextTo, nextParams }) {
+export function renderResult(root, nav, { title, stars, detail, backTo = 'home', backParams, nextTo, nextParams, chest = true }) {
+  checkRankUp();
   const box = el('div', 'result');
   box.appendChild(el('h2', null, escapeHTML(title)));
   if (stars > 0) {
@@ -707,6 +852,20 @@ export function renderResult(root, nav, { title, stars, detail, backTo = 'home',
   }
   box.appendChild(el('div', 'detail', escapeHTML(detail || '')));
   box.appendChild(el('div', 'xp', '+XP · totalt ' + S.xp));
+  if (chest) {
+    // Belöningskista — variabel belöning efter avklarat pass
+    const chestBtn = el('button', 'chest-btn', '🎁<br><span>Öppna belöning</span>');
+    chestBtn.onclick = () => {
+      const reward = rollReward();
+      addXP(reward.xp);
+      chestBtn.classList.add('opened');
+      chestBtn.innerHTML = `${reward.emoji}<br><span>${escapeHTML(reward.name)} +${reward.xp} XP</span>`;
+      chestBtn.disabled = true;
+      if (reward.xp >= 25) confetti();
+      checkRankUp();
+    };
+    box.appendChild(chestBtn);
+  }
   const row = el('div', 'continue-row');
   if (nextTo) {
     const nx = el('button', 'btn', 'Nästa lektion ›');

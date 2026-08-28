@@ -3,6 +3,7 @@
 import { initAudio, stopSpeech } from './audio.js';
 import * as screens from './screens.js';
 import { renderTestIntro, renderTestRun } from './test.js';
+import { renderArcade } from './arcade.js';
 
 const app = document.getElementById('app');
 
@@ -24,6 +25,9 @@ const routes = {
   settings: screens.renderSettings,
   testIntro: renderTestIntro,
   testRun: renderTestRun,
+  arcade: renderArcade,
+  achievements: screens.renderAchievements,
+  boss: screens.renderBoss,
 };
 
 export const nav = {

@@ -5,6 +5,7 @@
 import { el, escapeHTML, confetti } from './ui.js';
 import { speak, stopSpeech } from './audio.js';
 import { S, save, addXP, touchStreak } from './state.js';
+import { checkAchievements } from './gamify.js';
 import { VOCAB } from '../data/vocab.js';
 import { allKanji } from '../data/kanji.js';
 import { GRAMMAR_LESSONS, READING_PASSAGES, LISTENING_ITEMS } from '../data/grammar.js';
@@ -172,6 +173,7 @@ export function renderTestRun(root, nav) {
     addXP(pass ? 50 : 15);
     touchStreak();
     save();
+    checkAchievements();
     if (pass) confetti();
 
     host.innerHTML = '';

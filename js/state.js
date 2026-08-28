@@ -20,12 +20,17 @@ export const MAX_BOX = INTERVALS.length - 1;
 function freshState() {
   return {
     xp: 0,
-    streak: { last: null, count: 0 },
+    streak: { last: null, count: 0, freezes: 0 },
     lessons: {},   // lessonId -> stjärnor 1–3
     srs: {},       // itemId -> { box, due, right, wrong }
     settings: { slowAudio: false, autoplay: true },
     bestTest: null, // bästa provresultat { score, total, pass, date }
     level: 'N5',
+    quests: { date: null, progress: {}, claimed: [] }, // dagens uppdrag
+    badges: [],            // upplåsta utmärkelse-id:n
+    highscores: {},        // spelId -> bästa resultat
+    counters: { combo: 0 },// livstidsräknare för utmärkelser (bestCombo m.m.)
+    lastSeenRank: null,    // för rang-upp-firande
   };
 }
 
@@ -34,7 +39,17 @@ export let S = load();
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...freshState(), ...JSON.parse(raw) };
+    if (raw) {
+      const fresh = freshState();
+      const saved = JSON.parse(raw);
+      const merged = { ...fresh, ...saved };
+      // Djupmerge för nästlade objekt så nya fält inte tappas vid uppgradering
+      merged.settings = { ...fresh.settings, ...(saved.settings || {}) };
+      merged.quests = { ...fresh.quests, ...(saved.quests || {}) };
+      merged.counters = { ...fresh.counters, ...(saved.counters || {}) };
+      merged.streak = { ...fresh.streak, ...(saved.streak || {}) };
+      return merged;
+    }
   } catch { /* korrupt sparfil → börja om */ }
   return freshState();
 }
@@ -72,14 +87,30 @@ export function rank() {
   return { name: r[1], emoji: r[2], next: next ? next[0] : null, base: r[0] };
 }
 
-// ---------- Streak ----------
+// ---------- Streak (med ♨️ onsen-frys: förlåtande, utan streak-ångest) ----------
 export function touchStreak() {
   const today = new Date().toISOString().slice(0, 10);
-  if (S.streak.last === today) return;
+  if (S.streak.last === today) return null;
   const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  S.streak.count = (S.streak.last === yesterday) ? S.streak.count + 1 : 1;
+  const dayBefore = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+  let event = null;
+  if (S.streak.last === yesterday) {
+    S.streak.count += 1;
+  } else if (S.streak.last === dayBefore && (S.streak.freezes || 0) > 0) {
+    S.streak.freezes -= 1;               // onsen-vilan täcker gårdagens lucka
+    S.streak.count += 1;
+    event = 'freezeUsed';
+  } else {
+    S.streak.count = 1;
+  }
+  // Förtjäna en frys var 7:e streak-dag (max 2 i lager)
+  if (S.streak.count > 0 && S.streak.count % 7 === 0 && (S.streak.freezes || 0) < 2) {
+    S.streak.freezes = (S.streak.freezes || 0) + 1;
+    event = event || 'freezeEarned';
+  }
   S.streak.last = today;
   save();
+  return event;
 }
 export function streakDays() {
   const today = new Date().toISOString().slice(0, 10);

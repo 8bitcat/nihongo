@@ -5,20 +5,22 @@ import { el, escapeHTML } from './ui.js';
 import { speak, stopSpeech } from './audio.js';
 import { romajiToKana, romajiMatchesKana, shuffle, pick } from './kanaUtils.js';
 import { S, srsGrade, addXP } from './state.js';
+import { track, reportCombo } from './gamify.js';
 
 const rate = () => (S.settings.slowAudio ? 0.7 : 0.9);
 
 // ---------- Frågefabriker ----------
-// Varje fråga: { type, itemId?, render(container, done) } där done(correct, firstTry)
+// Varje fråga: { qtype?, itemId?, render(container, done) } där done(correct, firstTry)
 
-export function mcQ({ prompt, promptJP, speakText, autoSpeak, options, correctIdx, itemId, note }) {
-  return { itemId, render(root, done) {
+export function mcQ({ prompt, promptJP, promptEmoji, speakText, autoSpeak, options, correctIdx, itemId, note, emojiOpts, qtype }) {
+  return { itemId, qtype, render(root, done) {
     const ex = el('div', 'exercise');
     if (prompt) ex.appendChild(el('div', 'prompt-label', prompt));
     if (promptJP) {
       const g = el('div', promptJP.length > 4 ? 'medglyph' : 'bigglyph', escapeHTML(promptJP));
       ex.appendChild(g);
     }
+    if (promptEmoji) ex.appendChild(el('div', 'bigglyph', escapeHTML(promptEmoji)));
     if (speakText) {
       const btn = el('button', 'speakbtn' + (promptJP ? '' : ' big'), '🔊');
       btn.onclick = () => speak(speakText, { rate: rate() });
@@ -29,7 +31,7 @@ export function mcQ({ prompt, promptJP, speakText, autoSpeak, options, correctId
     const fb = el('div', 'feedback');
     let answered = false, firstTry = true;
     options.forEach((o, i) => {
-      const b = el('button', 'answer' + (o.jp ? ' jp' : ''),
+      const b = el('button', 'answer' + (o.jp ? ' jp' : '') + (emojiOpts ? ' emoji' : ''),
         escapeHTML(o.label) + (o.sub ? `<span class="sub">${escapeHTML(o.sub)}</span>` : ''));
       b.onclick = () => {
         if (answered) return;
@@ -58,7 +60,7 @@ export function mcQ({ prompt, promptJP, speakText, autoSpeak, options, correctId
 }
 
 export function typeQ({ prompt, promptJP, speakText, targetKana, itemId, showKanaPreview = true }) {
-  return { itemId, render(root, done) {
+  return { itemId, qtype: 'write', render(root, done) {
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label', prompt || 'Skriv uttalet med vanliga bokstäver (romaji):'));
     if (promptJP) ex.appendChild(el('div', promptJP.length > 3 ? 'medglyph' : 'bigglyph', escapeHTML(promptJP)));
@@ -113,7 +115,7 @@ export function typeQ({ prompt, promptJP, speakText, targetKana, itemId, showKan
 // Rita tecknet — spårning över svag mall (motoriskt minne).
 // blind=true: rita ur minnet, självrättning (för höga SRS-boxar).
 export function drawQ({ glyph, label, speakText, itemId, blind = false }) {
-  return { itemId, render(root, done) {
+  return { itemId, qtype: 'write', render(root, done) {
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label',
       blind ? `Rita <b>${escapeHTML(label)}</b> ur minnet — klicka Klar för facit`
@@ -264,14 +266,21 @@ export function drawQ({ glyph, label, speakText, itemId, blind = false }) {
 
 // ---------- Drillkörning ----------
 // questions: lista av frågor. onFinish({correctFirstTry, total}).
-export function runDrill(root, questions, { title, onFinish, gradeSRS = true }) {
+// Boss-läge: maxWrong (antal tillåtna fel) + onFail — hjärtan visas och drillen avbryts vid för många fel.
+export function runDrill(root, questions, { onFinish, gradeSRS = true, maxWrong = null, onFail = null, noRequeue = false }) {
   const queue = questions.slice();
   const totalOriginal = questions.length;
   let idx = 0;
   let firstTryCorrect = 0;
+  let combo = 0;
+  let wrongCount = 0;
   const results = []; // true/false per originalfråga (första försöket)
 
+  const statusRow = el('div', 'drill-status');
   const dots = el('div', 'progress-dots');
+  const comboEl = el('div', 'combo', '');
+  const heartsEl = el('div', 'hearts', '');
+  statusRow.appendChild(dots);
   const qHost = el('div');
 
   function renderDots() {
@@ -281,6 +290,10 @@ export function runDrill(root, questions, { title, onFinish, gradeSRS = true }) 
       if (i < results.length) d.classList.add(results[i] ? 'done' : 'wrong');
       else if (i === results.length) d.classList.add('current');
       dots.appendChild(d);
+    }
+    comboEl.textContent = combo >= 3 ? `🔥 ×${combo}` : '';
+    if (maxWrong !== null) {
+      heartsEl.textContent = '❤️'.repeat(Math.max(0, maxWrong + 1 - wrongCount)) + '🖤'.repeat(wrongCount);
     }
   }
 
@@ -294,14 +307,34 @@ export function runDrill(root, questions, { title, onFinish, gradeSRS = true }) 
     renderDots();
     const q = queue[idx];
     q.render(qHost, (correct, firstTry) => {
+      // Kombo: obruten kedja av rätt-på-första-försöket
+      if (firstTry && correct) {
+        combo++;
+        reportCombo(combo);
+        if (combo % 5 === 0) addXP(3); // bonus var femte i rad
+      } else {
+        combo = correct ? 1 : 0;
+      }
       if (!q._requeued) {
         results.push(firstTry && correct);
-        if (firstTry && correct) { firstTryCorrect++; addXP(2); }
+        if (firstTry && correct) {
+          firstTryCorrect++;
+          // Svårighetsviktad XP: produktion (skriva/rita) > lyssna > flerval
+          addXP(q.qtype === 'write' ? 4 : q.qtype === 'listen' ? 3 : 2);
+          if (q.qtype) track(q.qtype, 1);
+        } else {
+          wrongCount++;
+        }
         if (gradeSRS && q.itemId) srsGrade(q.itemId, firstTry && correct);
       } else if (correct) {
         addXP(1);
       }
-      if (!correct && !q._requeued) {
+      if (maxWrong !== null && wrongCount > maxWrong) {
+        renderDots();
+        onFail?.({ correctFirstTry: firstTryCorrect, answered: results.length, total: totalOriginal });
+        return;
+      }
+      if (!correct && !q._requeued && !noRequeue) {
         // lägg tillbaka en kopia i slutet av kön
         const copy = Object.create(Object.getPrototypeOf(q));
         Object.assign(copy, q, { _requeued: true });
@@ -312,7 +345,9 @@ export function runDrill(root, questions, { title, onFinish, gradeSRS = true }) 
     });
   }
 
-  root.appendChild(dots);
+  root.appendChild(statusRow);
+  root.appendChild(comboEl);
+  if (maxWrong !== null) root.appendChild(heartsEl);
   root.appendChild(qHost);
   next();
 }
@@ -385,7 +420,9 @@ export function mcOptions(correct, pool, n, labelFn) {
 export function kanaDrill(chars, pool, { perChar = 2 } = {}) {
   const qs = [];
   for (const ch of chars) {
-    const types = shuffle(['see', 'hear', 'reverse', 'type']).slice(0, perChar);
+    const typePool = ['see', 'hear', 'reverse', 'type'];
+    if (ch.e) typePool.push('bild'); // bild→tecken: minnesbilden som cue (dual coding)
+    const types = shuffle(typePool).slice(0, perChar);
     for (const t of types) {
       if (t === 'see') {
         const { options, correctIdx } = mcOptions(ch, pool, 3, x => x.r);
@@ -396,8 +433,15 @@ export function kanaDrill(chars, pool, { perChar = 2 } = {}) {
       } else if (t === 'hear') {
         const { options, correctIdx } = mcOptions(ch, pool, 3, x => x.k);
         qs.push(mcQ({
-          prompt: 'Lyssna — vilket tecken hör du?', speakText: ch.k, autoSpeak: true,
+          prompt: 'Lyssna — vilket tecken hör du?', speakText: ch.k, autoSpeak: true, qtype: 'listen',
           options: options.map(o => ({ label: o.k, jp: true })), correctIdx, itemId: 'k_' + ch.k,
+        }));
+      } else if (t === 'bild') {
+        const { options, correctIdx } = mcOptions(ch, pool, 3, x => x.k);
+        qs.push(mcQ({
+          prompt: `Minnesbilden! Vilket tecken är <b>${escapeHTML(ch.m.split('—')[0].trim())}</b>?`,
+          promptEmoji: ch.e,
+          options: options.map(o => ({ label: o.k, jp: true, speakOnPick: o.k })), correctIdx, itemId: 'k_' + ch.k,
         }));
       } else if (t === 'reverse') {
         const { options, correctIdx } = mcOptions(ch, pool, 3, x => x.k);
@@ -413,11 +457,15 @@ export function kanaDrill(chars, pool, { perChar = 2 } = {}) {
   return shuffle(qs);
 }
 
-// Ord-drill (ordförråd)
+// Ord-drill (ordförråd). Ord med bild (w.e) får bildbaserade retrieval-frågor —
+// bilden är cue eller facit, aldrig ledtråd bredvid rätt svar (Carpenter & Olson).
 export function vocabDrill(words, pool) {
   const qs = [];
+  const emojiPool = pool.filter(x => x.e);
   for (const w of words) {
-    const types = shuffle(['jp2sv', 'sv2jp', 'hear', 'type']).slice(0, 2);
+    const typePool = ['jp2sv', 'sv2jp', 'hear', 'type'];
+    if (w.e) typePool.push('bild2jp', 'hear2bild');
+    const types = shuffle(typePool).slice(0, 2);
     for (const t of types) {
       if (t === 'jp2sv') {
         const { options, correctIdx } = mcOptions(w, pool, 3, x => x.sv);
@@ -434,12 +482,28 @@ export function vocabDrill(words, pool) {
       } else if (t === 'hear') {
         const { options, correctIdx } = mcOptions(w, pool, 3, x => x.sv);
         qs.push(mcQ({
-          prompt: 'Lyssna — vad betyder ordet?', speakText: w.kana, autoSpeak: true,
+          prompt: 'Lyssna — vad betyder ordet?', speakText: w.kana, autoSpeak: true, qtype: 'listen',
           options: options.map(o => ({ label: o.sv })), correctIdx, itemId: w.id,
+        }));
+      } else if (t === 'bild2jp') {
+        // Bilden som cue → hämta det japanska ordet (utan svensk text!)
+        const { options, correctIdx } = mcOptions(w, emojiPool.length >= 4 ? emojiPool : pool, 3, x => x.kana);
+        qs.push(mcQ({
+          prompt: 'Vad heter det här på japanska?', promptEmoji: w.e,
+          options: options.map(o => ({ label: o.kana, jp: true, speakOnPick: o.kana })), correctIdx, itemId: w.id,
+        }));
+      } else if (t === 'hear2bild') {
+        // Hör ordet → peka på rätt bild (ljud→betydelse utan text)
+        const candidates = emojiPool.filter(x => x.e !== w.e);
+        const { options, correctIdx } = mcOptions(w, candidates.length >= 3 ? candidates : pool, 3, x => x.e || x.sv);
+        qs.push(mcQ({
+          prompt: 'Lyssna — vilken bild hör du?', speakText: w.kana, autoSpeak: true, qtype: 'listen', emojiOpts: true,
+          options: options.map(o => ({ label: o.e || o.sv })), correctIdx, itemId: w.id,
         }));
       } else {
         qs.push(typeQ({
-          prompt: `Skriv "${w.sv}" med romaji:`, speakText: w.kana, targetKana: w.kana, itemId: w.id,
+          prompt: w.e ? `Skriv ordet för ${w.e} med romaji:` : `Skriv "${w.sv}" med romaji:`,
+          speakText: w.kana, targetKana: w.kana, itemId: w.id,
         }));
       }
     }
