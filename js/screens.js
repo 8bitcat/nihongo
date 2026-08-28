@@ -9,7 +9,7 @@ import { kanaLessonsFor, allKanaItems, HIRAGANA, KATAKANA } from '../data/kana.j
 import { VOCAB, VOCAB_CATEGORIES } from '../data/vocab.js';
 import { KANJI_LESSONS, allKanji } from '../data/kanji.js';
 import { GRAMMAR_LESSONS } from '../data/grammar.js';
-import { pick, shuffle } from './kanaUtils.js';
+import { pick, shuffle, kanaToRomaji } from './kanaUtils.js';
 
 const CHUNK = 8; // ord per ordförrådslektion (forskning: 5–10 nya/dag)
 
@@ -244,6 +244,7 @@ export function renderKanaLesson(root, nav, { lessonId }) {
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label', `Ord ${wi + 1} av ${words.length}`));
     ex.appendChild(el('div', 'medglyph', escapeHTML(w.k)));
+    ex.appendChild(el('div', 'kana-preview', escapeHTML(kanaToRomaji(w.k))));
     ex.appendChild(el('div', 'romaji-big', escapeHTML(w.sv)));
     const sp = el('button', 'speakbtn', '🔊');
     sp.onclick = () => speak(w.k, { rate: 0.8 });
@@ -374,6 +375,7 @@ export function renderVocabLesson(root, nav, { catId, chunk }) {
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label', `Nytt ord ${i + 1} av ${words.length}`));
     ex.appendChild(el('div', 'medglyph', escapeHTML(w.kana)));
+    ex.appendChild(el('div', 'kana-preview', escapeHTML(kanaToRomaji(w.kana))));
     if (w.kanji) ex.appendChild(el('div', 'prompt-label', 'Med kanji: <span class="jp" style="font-size:1.4rem">' + escapeHTML(w.kanji) + '</span>'));
     ex.appendChild(el('div', 'romaji-big', escapeHTML(w.sv)));
     const sp = el('button', 'speakbtn', '🔊');
@@ -455,10 +457,12 @@ export function renderKanjiLesson(root, nav, { lessonId }) {
     ex.appendChild(el('div', 'prompt-label', `Kanji ${i + 1} av ${lesson.kanji.length}`));
     ex.appendChild(el('div', 'bigglyph', k.c));
     ex.appendChild(el('div', 'romaji-big', escapeHTML(k.sv)));
-    ex.appendChild(el('div', 'prompt-label', `on: <b>${escapeHTML(k.on)}</b> · kun: <b>${escapeHTML(k.kun)}</b>`));
+    const romajiOf = s => s === '—' ? '' : ` <span style="color:var(--gold)">(${escapeHTML(kanaToRomaji(s))})</span>`;
+    ex.appendChild(el('div', 'prompt-label',
+      `on: <b>${escapeHTML(k.on)}</b>${romajiOf(k.on)} · kun: <b>${escapeHTML(k.kun)}</b>${romajiOf(k.kun)}`));
     for (const e of k.ex) {
       const exm = el('div', 'example');
-      exm.innerHTML = `<div class="info"><div class="jp-line">${escapeHTML(e.w)}（${escapeHTML(e.r)}）</div><div class="sv">${escapeHTML(e.sv)}</div></div>`;
+      exm.innerHTML = `<div class="info"><div class="jp-line">${escapeHTML(e.w)}（${escapeHTML(e.r)}）</div><div class="romaji">${escapeHTML(kanaToRomaji(e.r))}</div><div class="sv">${escapeHTML(e.sv)}</div></div>`;
       const b = el('button', 'speakbtn', '🔊');
       b.onclick = () => speak(e.r, { rate: 0.85 });
       exm.appendChild(b);
