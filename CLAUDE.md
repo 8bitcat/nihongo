@@ -6,6 +6,7 @@ ordförråd, kanji och grammatik — hela vägen till ett JLPT N5-mockprov.
 **För full kontext och att återuppta arbetet: läs [SESSION.md](SESSION.md).**
 
 - Live: https://8bitcat.github.io/nihongo · Repo: `main` → GitHub Pages (deploy = push).
+- **Bumpa `js/version.js` vid varje deploy** — Pages cachar JS i 10 min; sidfoten visar versionen så användaren ser om webbläsaren kör gammalt.
 - Buildless HTML5 + ES-moduler, ingen bygg. Lokal test: `python -m http.server 8144`.
 - Verifiera alltid ändringar med headless-screenshot (Playwright) innan commit + push.
 - Ljud = Web Speech API (talsyntes ja-JP). Ingen extern ljudfil, inget API.

@@ -10,6 +10,7 @@ import { VOCAB, VOCAB_CATEGORIES } from '../data/vocab.js';
 import { KANJI_LESSONS, allKanji } from '../data/kanji.js';
 import { GRAMMAR_LESSONS } from '../data/grammar.js';
 import { pick, shuffle, kanaToRomaji } from './kanaUtils.js';
+import { APP_VERSION } from './version.js';
 
 const CHUNK = 8; // ord per ordförrådslektion (forskning: 5–10 nya/dag)
 
@@ -116,6 +117,7 @@ export function renderHome(root, nav) {
   const setBtn = el('button', 'btn secondary small', '⚙️ Inställningar');
   setBtn.onclick = () => nav.go('settings');
   foot.appendChild(setBtn);
+  foot.appendChild(el('div', 'prompt-label', `v${APP_VERSION} — ser du ett lägre nummer än senaste? Tryck Ctrl+Shift+R`));
   root.appendChild(foot);
 }
 
