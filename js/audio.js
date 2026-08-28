@@ -26,12 +26,14 @@ export function initAudio() {
   if (!('speechSynthesis' in window)) { voicesLoaded = true; return; }
   pickVoice();
   speechSynthesis.addEventListener?.('voiceschanged', pickVoice);
-  // Vissa webbläsare laddar röster asynkront utan event
-  if (!voice) setTimeout(pickVoice, 500);
+  // Vissa webbläsare fyller getVoices() först efter en stund (och utan event) — polla tills träff
+  for (const t of [200, 600, 1200, 2500, 4000]) {
+    setTimeout(() => { if (!voice) pickVoice(); }, t);
+  }
 }
 
 export function hasJapaneseVoice() {
-  if (!voicesLoaded) pickVoice();
+  if (!voice) pickVoice();
   return voice !== null;
 }
 

@@ -25,12 +25,20 @@ function topbar(root, nav, title, backTo = 'home', backParams) {
 }
 
 function audioNotice(root) {
-  if (!hasJapaneseVoice()) {
-    root.appendChild(el('div', 'notice',
-      '🔇 <b>Ingen japansk röst hittades.</b> Ljudet är viktigt för inlärningen! ' +
-      'Prova webbläsaren <b>Edge</b> eller <b>Chrome</b>, eller lägg till japanska som språk i Windows: ' +
-      'Inställningar → Tid och språk → Språk → Lägg till japanska.'));
-  }
+  // Röster laddas asynkront — visa varningen först när de fått chans att ladda,
+  // och göm den direkt om en japansk röst dyker upp.
+  const box = el('div', 'notice',
+    '🔇 <b>Ingen japansk röst hittades.</b> Ljudet är viktigt för inlärningen! ' +
+    'Prova webbläsaren <b>Edge</b> eller <b>Chrome</b>, eller lägg till japanska som språk i Windows: ' +
+    'Inställningar → Tid och språk → Språk → Lägg till japanska.');
+  box.style.display = 'none';
+  root.appendChild(box);
+  const checks = [400, 1000, 2000, 3500, 5000];
+  checks.forEach((t, i) => setTimeout(() => {
+    if (!box.isConnected) return;
+    if (hasJapaneseVoice()) box.style.display = 'none';
+    else if (i === checks.length - 1) box.style.display = '';
+  }, t));
 }
 
 // ---------- HEM ----------
