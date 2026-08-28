@@ -230,6 +230,12 @@ export function renderKanaLesson(root, nav, { lessonId }) {
     ex.appendChild(sp);
     ex.appendChild(el('div', 'mnemonic', `<span class="label">Minnesbild</span>${escapeHTML(c.m)}`));
     const row = el('div', 'continue-row');
+    if (i > 0) {
+      const prev = el('button', 'btn secondary', '‹ Förra');
+      prev.onclick = () => { i--; showIntro(); };
+      row.appendChild(prev);
+      row.appendChild(document.createTextNode(' '));
+    }
     const next = el('button', 'btn', i + 1 < chars.length ? 'Nästa tecken ›' : 'Dags att öva! ›');
     next.onclick = () => { i++; showIntro(); };
     row.appendChild(next);
@@ -258,6 +264,12 @@ export function renderKanaLesson(root, nav, { lessonId }) {
     sp.onclick = () => speak(w.k, { rate: 0.8 });
     ex.appendChild(sp);
     const row = el('div', 'continue-row');
+    if (wi > 0) {
+      const prev = el('button', 'btn secondary', '‹ Förra');
+      prev.onclick = () => { wi--; runWordIntro(); };
+      row.appendChild(prev);
+      row.appendChild(document.createTextNode(' '));
+    }
     const next = el('button', 'btn', wi + 1 < words.length ? 'Nästa ›' : 'Öva! ›');
     next.onclick = () => { wi++; runWordIntro(); };
     row.appendChild(next);
@@ -399,6 +411,12 @@ export function renderVocabLesson(root, nav, { catId, chunk }) {
       ex.appendChild(exm);
     }
     const row = el('div', 'continue-row');
+    if (i > 0) {
+      const prev = el('button', 'btn secondary', '‹ Förra');
+      prev.onclick = () => { i--; showIntro(); };
+      row.appendChild(prev);
+      row.appendChild(document.createTextNode(' '));
+    }
     const next = el('button', 'btn', i + 1 < words.length ? 'Nästa ord ›' : 'Öva! ›');
     next.onclick = () => { i++; showIntro(); };
     row.appendChild(next);
@@ -478,6 +496,12 @@ export function renderKanjiLesson(root, nav, { lessonId }) {
       ex.appendChild(exm);
     }
     const row = el('div', 'continue-row');
+    if (i > 0) {
+      const prev = el('button', 'btn secondary', '‹ Förra');
+      prev.onclick = () => { i--; showIntro(); };
+      row.appendChild(prev);
+      row.appendChild(document.createTextNode(' '));
+    }
     const next = el('button', 'btn', i + 1 < lesson.kanji.length ? 'Nästa kanji ›' : 'Öva! ›');
     next.onclick = () => { i++; showIntro(); };
     row.appendChild(next);
