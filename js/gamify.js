@@ -7,6 +7,7 @@ import { S, save, addXP, rank, streakDays } from './state.js';
 import { kanaLessonsFor } from '../data/kana.js';
 import { KANJI_LESSONS } from '../data/kanji.js';
 import { VOCAB } from '../data/vocab.js';
+import { MANGA, STORIES } from '../data/stories.js';
 
 // ---------- Dagliga uppdrag ----------
 const QUEST_POOL = [
@@ -97,6 +98,10 @@ export const ACHIEVEMENTS = [
     check: s => s.xp >= 1000 },
   { id:'test-pass',    name:'合格 — N5 godkänd!', emoji:'🎌', desc:'Klara JLPT N5-mockprovet',
     check: s => !!(s.bestTest && s.bestTest.pass) },
+  { id:'manga-first',  name:'Mangaläsare',        emoji:'📖', desc:'Läs din första manga — åt rätt håll!',
+    check: s => MANGA.some(m => (s.lessons[m.id] || 0) > 0) },
+  { id:'bookworm',     name:'Bokmal',             emoji:'📚', desc:'Läs alla sagor och all manga',
+    check: s => [...MANGA, ...STORIES].every(x => (s.lessons[x.id] || 0) > 0) },
 ];
 
 export function checkAchievements() {

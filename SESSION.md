@@ -1,6 +1,21 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-08-28 (v2.0 — bilder + gamification)
+Senast uppdaterad: 2026-08-30 (v2.1 — läsning + PWA)
+
+## v2.1 — Läsning & PWA
+
+- **📖 Läsmodul** ([js/reading.js](js/reading.js), [data/stories.js](data/stories.js)):
+  manga-guide (7 steg + ljudordstabell + panelordnings-övning), 4 mini-manga med ordningstvång
+  (grid `direction:rtl`, lodräta pratbubblor via `writing-mode:vertical-rl`, tap i läsordning),
+  4 graderade sagor (tadoku-stil, sida-för-sida med TTS/romaji/svenska + frågor).
+  Japanskan korrekturläst av workflow-agent: noll fel. `sentenceRomaji()` hanterar partikel-は/へ.
+- **PWA**: [manifest.webmanifest](manifest.webmanifest) (display:standalone — KRAV för iOS-badge),
+  [sw.js](sw.js) (network-first + cache-fallback), ikoner i icons/ (genererade via Playwright).
+- **iOS-badge** ([js/badge.js](js/badge.js)): setAppBadge vid visibilitychange/pagehide =
+  antal kort due inom 18 h. Kräver notisbehörighet (knapp i Inställningar) + att appen
+  läggs till på hemskärmen PÅ NYTT efter denna version (iOS cachar manifestet hårt).
+  Schemalagda pushnotiser utan server är OMÖJLIGT på iOS-webben (verifierat 2026-08-30,
+  WebKit-källor i workflow-resultatet) — alternativ dokumenterade i Inställningar.
 
 ## Status
 

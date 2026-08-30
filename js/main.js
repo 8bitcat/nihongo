@@ -4,6 +4,8 @@ import { initAudio, stopSpeech } from './audio.js';
 import * as screens from './screens.js';
 import { renderTestIntro, renderTestRun } from './test.js';
 import { renderArcade } from './arcade.js';
+import { renderReading, renderMangaGuide, renderManga, renderStory } from './reading.js';
+import { initBadge } from './badge.js';
 
 const app = document.getElementById('app');
 
@@ -28,6 +30,10 @@ const routes = {
   arcade: renderArcade,
   achievements: screens.renderAchievements,
   boss: screens.renderBoss,
+  reading: renderReading,
+  mangaGuide: renderMangaGuide,
+  manga: renderManga,
+  story: renderStory,
 };
 
 export const nav = {
@@ -42,4 +48,8 @@ export const nav = {
 };
 
 initAudio();
+initBadge();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* offline-stöd är nice-to-have */ });
+}
 nav.go('home');

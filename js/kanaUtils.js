@@ -154,6 +154,15 @@ export function romajiMatchesKana(input, targetKana) {
   return typed === target;
 }
 
+// Romaji för hela meningar: partiklarna は/へ uttalas wa/e — texterna har mellanslag
+// mellan fraser, så partikeln står alltid sist i sitt ord.
+export function sentenceRomaji(jp) {
+  const fixed = jp
+    .replace(/は(?=[\s、。！？!?～]|$)/g, 'わ')
+    .replace(/へ(?=[\s、。！？!?～]|$)/g, 'え');
+  return kanaToRomaji(fixed);
+}
+
 export function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {

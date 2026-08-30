@@ -13,6 +13,13 @@ import { pick, shuffle, kanaToRomaji } from './kanaUtils.js';
 import { APP_VERSION } from './version.js';
 import { questsForToday, questProgress, questClaimed, claimQuest, track, checkAchievements,
          checkRankUp, rollReward, showToast, ACHIEVEMENTS } from './gamify.js';
+import { MANGA, STORIES } from '../data/stories.js';
+import { badgeSupported, isStandalone, enableBadge, updateBadge, dueSoonCount } from './badge.js';
+
+function readingPct() {
+  const items = ['manga-guide', ...MANGA.map(m => m.id), ...STORIES.map(s => s.id)];
+  return items.filter(id => (S.lessons[id] || 0) > 0).length / items.length;
+}
 
 const CHUNK = 8; // ord per ordförrådslektion (forskning: 5–10 nya/dag)
 
@@ -135,6 +142,7 @@ export function renderHome(root, nav) {
     { emoji:'🍜', name:'Ordförråd', desc: vocabInSrs + ' av ' + VOCAB.length + ' N5-ord påbörjade', pct: vocabInSrs / VOCAB.length, go:['vocab'] },
     { emoji:'🖌️', name:'Kanji', desc:'80 N5-kanji med exempel', pct: kanjiDone / KANJI_LESSONS.length, go:['kanjiModule'] },
     { emoji:'🧩', name:'Grammatik', desc:'Partiklar, verb & adjektiv', pct: gramDone / GRAMMAR_LESSONS.length, go:['grammarModule'] },
+    { emoji:'📖', name:'Läsning', desc:'Manga (höger→vänster!) & enkla sagor', pct: readingPct(), go:['reading'] },
     { emoji:'🎓', name:'JLPT N5-prov', desc: S.bestTest ? `Bästa: ${S.bestTest.score}/180 ${S.bestTest.pass ? '✔ godkänd' : ''}` : 'Testa dig som på riktiga provet', pct: S.bestTest?.pass ? 1 : 0, go:['testIntro'] },
     { emoji:'🌧️', name:'Kana-regn', desc: (S.highscores.kanaRain ? 'Rekord: ' + S.highscores.kanaRain + ' poäng' : 'Arkadspel — skriv romaji innan tecknen landar!'), pct: Math.min(1, (S.highscores.kanaRain || 0) / 50), go:['arcade'] },
     { emoji:'🏅', name:'Utmärkelser', desc: S.badges.length + ' av ' + ACHIEVEMENTS.length + ' upplåsta', pct: S.badges.length / ACHIEVEMENTS.length, go:['achievements'] },
@@ -830,6 +838,7 @@ export function renderReview(root, nav) {
       touchStreak();
       track('review', res.total);
       checkAchievements();
+      updateBadge();
       confetti();
       nav.go('result', {
         title: 'Repetition klar! お疲れ様！', stars: 0,
@@ -906,6 +915,34 @@ export function renderSettings(root, nav) {
   tb.onclick = () => speak('こんにちは！日本語を勉強しましょう！', { rate: 0.9 });
   test.appendChild(tb);
   list.appendChild(test);
+
+  // iPhone-badge (röd siffra på ikonen)
+  const badge = el('div', 'setting-row');
+  const badgeStatus = !badgeSupported()
+    ? 'Stöds inte i denna webbläsare — funkar i appen på iPhone-hemskärmen'
+    : !isStandalone()
+      ? 'Öppna via hemskärmsikonen på iPhone och aktivera där'
+      : dueSoonCount() + ' kort väntar/förfaller inom 18 h';
+  badge.innerHTML = `<div class="t"><b>🔴 Ikon-badge (iPhone)</b><span>${escapeHTML(badgeStatus)}</span></div>`;
+  const bb = el('button', 'btn small', 'Aktivera');
+  bb.onclick = async () => {
+    const r = await enableBadge();
+    showToast(r === 'ok' ? '🔴 Badge aktiverad! Siffran uppdateras när du lämnar appen.'
+      : r === 'denied' ? 'Du nekade notisbehörighet — badge kräver den (Inställningar → Nihongo).'
+      : r === 'unsupported' ? 'Badge stöds bara i hemskärmsappen på iPhone (iOS 16.4+).'
+      : 'Något gick fel — testa i hemskärmsappen.');
+  };
+  badge.appendChild(bb);
+  list.appendChild(badge);
+
+  const badgeInfo = el('div', 'notice');
+  badgeInfo.innerHTML = '<b>Så funkar påminnelser på iPhone:</b> siffran på ikonen sätts varje gång du ' +
+    'lämnar appen och visar hur många kort som väntar (eller förfaller inom 18 h) — töm repetitionen så nollas den. ' +
+    'iOS tillåter tyvärr inte schemalagda notiser från webbappar utan en server. ' +
+    'Vill du ha en riktig daglig notis: lägg en påminnelse i iOS-appen <b>Påminnelser</b> (t.ex. kl 19:00) med länken till spelet.<br><br>' +
+    '<b>Viktigt efter denna uppdatering:</b> ta bort ikonen från hemskärmen och lägg till den igen (Dela → Lägg till på hemskärmen) — ' +
+    'först då får appen riktig ikon, helskärmsläge och badge-stöd.';
+  list.appendChild(badgeInfo);
 
   const st = srsStats();
   const stats = el('div', 'setting-row');
