@@ -14,6 +14,31 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
+// Push-fallback för klienter som inte hanterar declarative web push (payloaden
+// skickas i deklarativt format — iOS 18.4+ visar den utan att väcka denna handler).
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data.json(); } catch { /* tom/oparsad payload → standardtext */ }
+  const n = data.notification || data;
+  e.waitUntil((async () => {
+    await self.registration.showNotification(n.title || '⛩️ Nihongo Quest', {
+      body: n.body || 'Dags för dagens japanska! 頑張って！',
+      data: { url: n.navigate || './' },
+    });
+    try { if (n.app_badge !== undefined) await self.navigator.setAppBadge(n.app_badge); } catch { /* badge frivillig */ }
+  })());
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || './';
+  e.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of clientsList) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow(url);
+  })());
+});
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || !req.url.startsWith(self.location.origin)) return;

@@ -15,6 +15,7 @@ import { questsForToday, questProgress, questClaimed, claimQuest, track, checkAc
          checkRankUp, rollReward, showToast, ACHIEVEMENTS } from './gamify.js';
 import { MANGA, STORIES } from '../data/stories.js';
 import { badgeSupported, isStandalone, enableBadge, updateBadge, dueSoonCount } from './badge.js';
+import { pushSupported, subscribePush, currentSubscription } from './push.js';
 
 function readingPct() {
   const items = ['manga-guide', ...MANGA.map(m => m.id), ...STORIES.map(s => s.id)];
@@ -935,13 +936,60 @@ export function renderSettings(root, nav) {
   badge.appendChild(bb);
   list.appendChild(badge);
 
+  // Pushnotiser kl 19 (skickas av GitHub Actions)
+  const push = el('div', 'setting-row');
+  push.innerHTML = `<div class="t"><b>📣 Daglig pushnotis kl 19</b><span>Kollar status…</span></div>`;
+  const pushSub = push.querySelector('span');
+  const pb = el('button', 'btn small', 'Aktivera');
+  push.appendChild(pb);
+  list.appendChild(push);
+  const pushResult = el('div');
+  list.appendChild(pushResult);
+
+  if (!pushSupported()) {
+    pushSub.textContent = 'Stöds bara i hemskärmsappen på iPhone (iOS 16.4+)';
+  } else {
+    currentSubscription().then(sub => {
+      pushSub.textContent = sub ? 'Prenumeration finns på denna enhet ✓ (tryck för att visa JSON igen)' : 'Inte aktiverad på denna enhet';
+    });
+  }
+  pb.onclick = async () => {
+    pb.disabled = true;
+    const r = await subscribePush();
+    pb.disabled = false;
+    pushResult.innerHTML = '';
+    if (r.status === 'ok') {
+      pushSub.textContent = 'Prenumeration skapad ✓ — gör klart steg 2 nedan';
+      const box = el('div', 'notice');
+      box.innerHTML = '<b>Steg 2 (engångs):</b> kopiera JSON:en nedan och klistra in som värde för secreten ' +
+        '<b>PUSH_SUBSCRIPTIONS</b> på <b>github.com/8bitcat/nihongo → Settings → Secrets and variables → Actions</b>. ' +
+        'Har secreten redan en annan enhets prenumeration: lägg in detta objekt i samma lista [ … ].';
+      const ta = document.createElement('textarea');
+      ta.value = r.json;
+      ta.readOnly = true;
+      ta.style.cssText = 'width:100%;height:130px;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.72rem;margin-top:8px';
+      const copy = el('button', 'btn small', '📋 Kopiera JSON');
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(r.json); copy.textContent = '✓ Kopierad!'; }
+        catch { ta.select(); document.execCommand('copy'); copy.textContent = '✓ Kopierad!'; }
+      };
+      box.appendChild(ta);
+      box.appendChild(copy);
+      pushResult.appendChild(box);
+    } else {
+      showToast(r.status === 'denied' ? 'Du nekade notisbehörighet — krävs för push (Inställningar → Nihongo).'
+        : r.status === 'unsupported' ? 'Push stöds bara i hemskärmsappen på iPhone.'
+        : 'Fel: ' + (r.message || 'okänt') + ' — testa i hemskärmsappen.');
+    }
+  };
+
   const badgeInfo = el('div', 'notice');
-  badgeInfo.innerHTML = '<b>Så funkar påminnelser på iPhone:</b> siffran på ikonen sätts varje gång du ' +
-    'lämnar appen och visar hur många kort som väntar (eller förfaller inom 18 h) — töm repetitionen så nollas den. ' +
-    'iOS tillåter tyvärr inte schemalagda notiser från webbappar utan en server. ' +
-    'Vill du ha en riktig daglig notis: lägg en påminnelse i iOS-appen <b>Påminnelser</b> (t.ex. kl 19:00) med länken till spelet.<br><br>' +
-    '<b>Viktigt efter denna uppdatering:</b> ta bort ikonen från hemskärmen och lägg till den igen (Dela → Lägg till på hemskärmen) — ' +
-    'först då får appen riktig ikon, helskärmsläge och badge-stöd.';
+  badgeInfo.innerHTML = '<b>Så funkar påminnelserna:</b><br>' +
+    '🔴 <b>Badgen</b> sätts när du lämnar appen (kort som väntar/förfaller inom 18 h) — töm repetitionen så nollas den.<br>' +
+    '📣 <b>Pushnotisen</b> skickas varje dag kl 19 av spelets GitHub-robot — kräver Aktivera-knappen ovan + att JSON:en ' +
+    'klistras in i repo-secreten en gång per enhet. På iOS 18.4+ sätter notisen även badgen, helt utan att appen öppnats.<br><br>' +
+    '<b>Viktigt:</b> allt detta kräver att appen är tillagd på hemskärmen EFTER v2.1 — ta annars bort ikonen och ' +
+    'lägg till den igen (Dela → Lägg till på hemskärmen).';
   list.appendChild(badgeInfo);
 
   const st = srsStats();
