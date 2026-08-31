@@ -27,7 +27,12 @@ body {
   line-height: 1.5;
 }
 .jp { font-family: var(--jp-font); }
-#app { max-width: 760px; margin: 0 auto; padding: 16px 16px 90px; }
+/* Safe area: i hemskärmsläge på iPhone ritas sidan under statusfält/Dynamic Island
+   och hem-indikatorn — utan detta hamnar bakåtknappen bakom klockan och går inte att trycka på. */
+#app {
+  max-width: 760px; margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(90px + env(safe-area-inset-bottom, 0px));
+}
 .boot { text-align: center; padding: 40vh 0; color: var(--muted); font-size: 1.2rem; }
 button { font-family: inherit; }
 
@@ -38,7 +43,8 @@ button { font-family: inherit; }
 }
 .topbar .back {
   background: var(--card); border: 1px solid var(--line); color: var(--text);
-  border-radius: 10px; padding: 8px 14px; font-size: 1rem; cursor: pointer;
+  border-radius: 10px; padding: 8px 14px; font-size: 1.1rem; cursor: pointer;
+  min-width: 48px; min-height: 44px; /* Apples minsta tryckyta */
 }
 .topbar .back:hover { background: var(--card-hi); }
 .topbar h1 { font-size: 1.15rem; font-weight: 600; flex: 1; }
@@ -225,7 +231,7 @@ canvas.drawpad {
 .test-part .n { background: var(--torii); color: #fff; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
 .test-part .t b { display: block; }
 .test-part .t span { color: var(--muted); font-size: .85rem; }
-.test-timer { position: fixed; top: 10px; right: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-variant-numeric: tabular-nums; z-index: 10; }
+.test-timer { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-variant-numeric: tabular-nums; z-index: 10; }
 .test-timer.low { color: var(--red); border-color: var(--red); }
 .reading-passage { background: #fdf8ee; color: #222; border-radius: var(--radius); padding: 18px; margin: 0 auto 18px; max-width: 520px; font-family: var(--jp-font); font-size: 1.15rem; line-height: 2; text-align: left; }
 .score-table { margin: 16px auto; max-width: 420px; border-collapse: collapse; width: 100%; }
@@ -261,7 +267,7 @@ canvas.drawpad {
 
 /* ---------- gamification ---------- */
 .toast {
-  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(80px);
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(80px);
   background: var(--card-hi); border: 1px solid var(--gold); color: var(--text);
   border-radius: 999px; padding: 12px 22px; font-size: .95rem; z-index: 200;
   box-shadow: 0 6px 24px rgba(0,0,0,.5); opacity: 0; transition: transform .3s, opacity .3s;
