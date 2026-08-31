@@ -14,6 +14,7 @@ import { APP_VERSION } from './version.js';
 import { questsForToday, questProgress, questClaimed, claimQuest, track, checkAchievements,
          checkRankUp, rollReward, showToast, ACHIEVEMENTS } from './gamify.js';
 import { MANGA, STORIES } from '../data/stories.js';
+import { COURSE_LESSONS } from '../data/course.js';
 import { badgeSupported, isStandalone, enableBadge, updateBadge, dueSoonCount } from './badge.js';
 import { pushSupported, subscribePush, currentSubscription } from './push.js';
 
@@ -140,6 +141,7 @@ export function renderHome(root, nav) {
   const items = [
     { emoji:'🌸', name:'Hiragana', desc:'Grundskriften — börja här!', pct: hiraDone / hiraLessons.length, go:['kana', { script:'hira' }] },
     { emoji:'⚡', name:'Katakana', desc:'För lånord — kaffe, spel, Sverige…', pct: kataDone / kataLessons.length, go:['kana', { script:'kata' }] },
+    { emoji:'🎓', name:'Kursen', desc:'Följer Genki I kapitel för kapitel — dialog + drillar', pct: COURSE_LESSONS.filter(l => lessonStars(l.id) > 0).length / COURSE_LESSONS.length, go:['course'] },
     { emoji:'🍜', name:'Ordförråd', desc: vocabInSrs + ' av ' + VOCAB.length + ' N5-ord påbörjade', pct: vocabInSrs / VOCAB.length, go:['vocab'] },
     { emoji:'🖌️', name:'Kanji', desc:'80 N5-kanji med exempel', pct: kanjiDone / KANJI_LESSONS.length, go:['kanjiModule'] },
     { emoji:'🧩', name:'Grammatik', desc:'Partiklar, verb & adjektiv', pct: gramDone / GRAMMAR_LESSONS.length, go:['grammarModule'] },

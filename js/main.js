@@ -5,6 +5,7 @@ import * as screens from './screens.js';
 import { renderTestIntro, renderTestRun } from './test.js';
 import { renderArcade } from './arcade.js';
 import { renderReading, renderMangaGuide, renderManga, renderStory } from './reading.js';
+import { renderCourse, renderCourseLesson } from './course.js';
 import { initBadge } from './badge.js';
 
 const app = document.getElementById('app');
@@ -27,6 +28,8 @@ const routes = {
   settings: screens.renderSettings,
   testIntro: renderTestIntro,
   testRun: renderTestRun,
+  course: renderCourse,
+  courseLesson: renderCourseLesson,
   arcade: renderArcade,
   achievements: screens.renderAchievements,
   boss: screens.renderBoss,

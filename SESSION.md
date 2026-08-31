@@ -1,6 +1,18 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-08-30 (v2.1 — läsning + PWA)
+Senast uppdaterad: 2026-08-31 (v2.6 — Kursen/Genki-spåret)
+
+## v2.6 — Kursen (Genki-spåret)
+
+- **🎓 Kursen** ([js/course.js](js/course.js), [data/course.js](data/course.js)): eget spår som
+  följer **Genki I 3:e uppl.** kapitel för kapitel (struktur verifierad mot Carls PDF — TOC L1–L8
+  lästa som renderade sidor via pdfjs+Playwright; PDF:en är gitignorad, allt innehåll originalskrivet).
+  Kap 1–6 fullt byggda: grammatikpunkter → dialog (replik för replik med TTS/romaji/svenska) →
+  drill med nya övningstyper: **tileQ** (meningsbyggare — Genkis mönsterdrill), böjningsdrill
+  (typeQ: ます/dåtid/adjektiv/て-form), frågor, och **sifferlyssning** (genererade klockslag med
+  よじ/しちじ/くじ + priser med さんびゃく/ろっぴゃく/はっせん-ljudförändringar). Kap 7–12 som
+  låsta stubbar ("del 2"). 2 nya utmärkelser. PDF-rendering: scratchpad/genki-render2.js
+  (pdfjs i Chromium — @napi-rs/canvas segfaultar på denna maskin).
 
 ## v2.1 — Läsning & PWA
 

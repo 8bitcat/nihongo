@@ -112,6 +112,52 @@ export function typeQ({ prompt, promptJP, speakText, targetKana, itemId, showKan
   }};
 }
 
+// Meningsbyggare (Genki-stil mönsterdrill): bygg meningen genom att trycka
+// på ordbrickorna i rätt ordning. Tränar partiklar och ordföljd.
+export function tileQ({ sv, tiles, extra = [], itemId }) {
+  return { itemId, qtype: 'write', render(root, done) {
+    const ex = el('div', 'exercise');
+    ex.appendChild(el('div', 'prompt-label', 'Bygg meningen:'));
+    ex.appendChild(el('div', 'tile-target', escapeHTML(sv)));
+    const built = el('div', 'tile-built jp', '');
+    const bank = el('div', 'tile-bank');
+    const fb = el('div', 'feedback');
+    let pos = 0, firstTry = true, doneFlag = false;
+    const all = shuffle([...tiles, ...extra]);
+    for (const label of all) {
+      const b = el('button', 'tile jp', escapeHTML(label));
+      b.onclick = () => {
+        if (doneFlag || b.disabled) return;
+        if (label === tiles[pos]) {
+          pos++;
+          b.disabled = true;
+          b.classList.add('used');
+          built.textContent += label;
+          fb.textContent = '';
+          if (pos === tiles.length) {
+            doneFlag = true;
+            fb.textContent = 'Rätt! 正解！';
+            fb.className = 'feedback ok';
+            speak(tiles.join(''), { rate: rate() });
+            setTimeout(() => done(true, firstTry), 1300);
+          }
+        } else {
+          firstTry = false;
+          b.classList.add('shake');
+          setTimeout(() => b.classList.remove('shake'), 350);
+          fb.textContent = pos === 0 ? 'Vad börjar meningen med?' : 'Inte den — vad kommer härnäst?';
+          fb.className = 'feedback no';
+        }
+      };
+      bank.appendChild(b);
+    }
+    ex.appendChild(built);
+    ex.appendChild(bank);
+    ex.appendChild(fb);
+    root.appendChild(ex);
+  }};
+}
+
 // Rita tecknet — spårning över svag mall (motoriskt minne).
 // blind=true: rita ur minnet, självrättning (för höga SRS-boxar).
 export function drawQ({ glyph, label, speakText, itemId, blind = false }) {

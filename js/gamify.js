@@ -8,6 +8,7 @@ import { kanaLessonsFor } from '../data/kana.js';
 import { KANJI_LESSONS } from '../data/kanji.js';
 import { VOCAB } from '../data/vocab.js';
 import { MANGA, STORIES } from '../data/stories.js';
+import { COURSE_LESSONS } from '../data/course.js';
 
 // ---------- Dagliga uppdrag ----------
 const QUEST_POOL = [
@@ -102,6 +103,10 @@ export const ACHIEVEMENTS = [
     check: s => MANGA.some(m => (s.lessons[m.id] || 0) > 0) },
   { id:'bookworm',     name:'Bokmal',             emoji:'📚', desc:'Läs alla sagor och all manga',
     check: s => [...MANGA, ...STORIES].every(x => (s.lessons[x.id] || 0) > 0) },
+  { id:'course-start', name:'Kursstart',          emoji:'🎓', desc:'Klara kursens första kapitel',
+    check: s => (s.lessons['kurs-1'] || 0) > 0 },
+  { id:'course-half',  name:'Halva boken!',       emoji:'📗', desc:'Klara kursens kapitel 1–6',
+    check: s => COURSE_LESSONS.filter(l => !l.locked).every(l => (s.lessons[l.id] || 0) > 0) },
 ];
 
 export function checkAchievements() {
