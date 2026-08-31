@@ -46,21 +46,50 @@ export function renderArcade(root, nav) {
   start.onclick = () => { root.removeChild(intro); startGame(); };
 
   function startGame() {
-    const wrap = el('div');
+    const wrap = el('div', 'rain-wrap-fixed');
     const field = el('div', 'rain-field');
     const hud = el('div', 'rain-hud');
     const scoreEl = el('span', 'chip', 'Poäng: <b>0</b>');
     const comboEl = el('span', 'chip', '');
     const heartsEl = el('span', 'chip', '❤️❤️❤️');
     hud.appendChild(scoreEl); hud.appendChild(comboEl); hud.appendChild(heartsEl);
+    const exitBtn = el('button', 'chip rain-exit', '✕');
+    exitBtn.onclick = () => {
+      running = false; cancelAnimationFrame(raf); stopSpeech(); restoreLayout();
+      nav.go('arcade');
+    };
+    hud.appendChild(exitBtn);
     const inputRow = el('div', 'typebox rain-input');
     const input = document.createElement('input');
     input.type = 'text'; input.autocapitalize = 'off'; input.autocomplete = 'off'; input.spellcheck = false;
     input.placeholder = 'skriv romaji…';
     inputRow.appendChild(input);
     const preview = el('div', 'kana-preview center', '');
-    wrap.appendChild(hud); wrap.appendChild(field); wrap.appendChild(inputRow); wrap.appendChild(preview);
+    wrap.appendChild(hud); wrap.appendChild(field); wrap.appendChild(preview); wrap.appendChild(inputRow);
     root.appendChild(wrap);
+
+    // Mobiltangentbordet krymper synliga ytan — spelet är ett fast lager som
+    // storleksanpassas efter visualViewport, så sidan aldrig hoppar/scrollar.
+    const vv = window.visualViewport;
+    const syncViewport = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      wrap.style.height = h + 'px';
+      wrap.style.transform = vv ? `translateY(${vv.offsetTop}px)` : '';
+    };
+    vv?.addEventListener('resize', syncViewport);
+    vv?.addEventListener('scroll', syncViewport);
+    syncViewport();
+    window.scrollTo(0, 0);
+    document.body.style.overflow = 'hidden';
+    const restoreLayout = () => {
+      vv?.removeEventListener('resize', syncViewport);
+      vv?.removeEventListener('scroll', syncViewport);
+      document.body.style.overflow = '';
+      wrap.classList.remove('rain-wrap-fixed');
+      wrap.style.height = ''; wrap.style.transform = '';
+    };
+    // Tapp på spelfältet ska inte stänga tangentbordet
+    field.addEventListener('pointerdown', (e) => { e.preventDefault(); input.focus(); });
     setTimeout(() => input.focus(), 100);
 
     let score = 0, hearts = 3, streakHits = 0, running = true;
@@ -155,6 +184,8 @@ export function renderArcade(root, nav) {
       running = false;
       cancelAnimationFrame(raf);
       stopSpeech();
+      input.blur();
+      restoreLayout();
       const best = S.highscores.kanaRain || 0;
       const isPB = score > best;
       if (isPB) { S.highscores.kanaRain = score; save(); confetti(); }
@@ -207,7 +238,7 @@ export function renderArcade(root, nav) {
       wrap.appendChild(res);
     }
 
-    nav.onLeave = () => { running = false; cancelAnimationFrame(raf); stopSpeech(); };
+    nav.onLeave = () => { running = false; cancelAnimationFrame(raf); stopSpeech(); restoreLayout(); };
     raf = requestAnimationFrame(t => { lastSpawn = t - spawnEvery; frame(t); }); // första tecknet direkt
   }
 }

@@ -373,3 +373,16 @@ canvas.drawpad {
 .rain-kana.popped { color: var(--green); font-size: 1.4rem; font-weight: 800; transition: transform .35s, opacity .35s; transform: scale(1.8); opacity: 0; }
 .rain-kana.missed { color: var(--red); transition: opacity .35s; opacity: 0; }
 .rain-input { max-width: 300px; }
+/* Spelet som fast lager: fyller exakt synliga ytan (höjd sätts av JS via visualViewport),
+   input längst ner precis ovanför tangentbordet — inget scrollar, inget hoppar. */
+.rain-wrap-fixed {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 50;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 8px;
+  gap: 4px;
+}
+.rain-wrap-fixed .rain-field { flex: 1; min-height: 0; height: auto; margin: 2px 0; }
+.rain-wrap-fixed .rain-input { margin: 0 auto; width: 100%; }
+.rain-wrap-fixed .kana-preview { min-height: 1.4rem; margin: 0; }
+button.rain-exit { cursor: pointer; font-weight: 700; color: var(--red); min-width: 40px; }
