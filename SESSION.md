@@ -1,6 +1,37 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-08-31 (v2.6 — Kursen/Genki-spåret)
+Senast uppdaterad: 2026-08-31 (v3.0 — Ordmaraton/10k-ordbanken)
+
+## v3.0 — Ordmaraton & 10 000-ordbanken
+
+- **🎯 Ordmaraton** ([js/grind.js](js/grind.js)): bruteforce-drill rakt igenom en frekvensordnad
+  bana på **10 000 ord** — Carls personliga mål är de **3 000 vanligaste** (progressbar + 👑 på hem).
+  10 ord/runda: snabbtitt (kanji + klickbara kana-stavelser + romaji + svenska) → drill.
+  Alla frågor UTGÅR FRÅN JAPANSKAN (Carls krav): kanji/kana→betydelse, ljud→betydelse,
+  läs-och-skriv-uttal (typeQ med promptJP), meningsbygge (tileQ-ramar per ordklass:
+  これは〜です / わたしはまいにち〜 / とても〜です). Missade ord → automatiskt in i SRS
+  (rätta nya ord belastar INTE repetitionen). Milstolpe-utmärkelser 500→10 000 + dagsuppdrag.
+  Position ankras med lastId så banan tål datajusteringar ([js/grind.js](js/grind.js) `syncPos`).
+- **Ordbanken** ([data/wordbank.js](data/wordbank.js) + genererade [data/words1.js](data/words1.js)
+  (1–3000) / [data/words2.js](data/words2.js) (3001–10000)): byggd av
+  **hingston/japanese-frekvenslistan (Leeds-korpus, CC BY) ⋈ JMdict (EDRDG, CC BY-SA 4.0)**.
+  Pipeline i scratchpad: `extract.mjs` (join, POS-filter prt/aux/cop/suf, fragment-blocklista
+  ます/あり/かも…, uk-preferens för kana-homografer) → 10 översättningsagenter (EN→SV, TSV per
+  rank) → `build_words.mjs` (merge + handputsade glosor för toppfunktionsord + N5-ord utan
+  frekvensträff placeras SIST i 3000-blocket — banan börjar med äkta frekvensordning).
+  Attribution i Inställningar. Kompakt format: `[kanji|0, kana, sv, ordklass, id?]` —
+  id delas med lektionsspåret (v_…) när ordet finns där; SRS-progress synkas automatiskt.
+- **Romaji-toggle** (S.settings.showRomaji): av/på i Inställningar + snabbknapp i alla
+  maratonvyer; gate:ar romaji i ordrader, drillprompts och tileQ:s romaji-rad.
+- **Klickbara kana-stavelser** (`kanaSegments` i grind.js): yōon hålls ihop (きゃ),
+  っ slås ihop med nästa; tryck = stavelsens ljud, tryck på huvudordet = hela ordet.
+- **Röstväljare** ([js/audio.js](js/audio.js)): dropdown med alla ja-röster (rankade:
+  Nanami > enhanced/premium > online/natural > Google > Siri), sparas i settings.voiceURI;
+  iOS-tips i Inställningar (ladda ner Kyoko förbättrad). Grammatik- + kursquiz fick ljud
+  (autouppläsning med paus i luckan, hela meningen vid rätt svar) och facit-läckande
+  förklaringsrader döljs tills efter svar (spoiler-detektering i [js/screens.js](js/screens.js)).
+- **Research** (2026-08-31): 2000 ord ≈ 80–85 % av engelsk text; japanskt TAL: 2–3k ord ≈ 95 %,
+  japansk SKRIFT: 95 % kräver ~9,5–12k (Matsushita VDRJ) — därav 3k-mål (tal) + 10k-bana (läsning).
 
 ## v2.6 — Kursen (Genki-spåret)
 
@@ -50,8 +81,10 @@ minigame-design) — se CLAUDE.md punkt 7–8 för reglerna.
 | [js/screens.js](js/screens.js) | Alla vyer utom provet |
 | [js/test.js](js/test.js) | JLPT N5-mockprov (3 delar, timer, 0–180 p) |
 | [js/exercises.js](js/exercises.js) | Övningsmotor: mcQ, typeQ, drawQ (canvas), matchning, runDrill |
-| [js/state.js](js/state.js) | Sparfil + SRS (Leitner, 9 boxar) + XP/rank/streak |
-| [js/audio.js](js/audio.js) | Talsyntes ja-JP med röstranking (Nanami > Google > övriga) |
+| [js/state.js](js/state.js) | Sparfil + SRS (Leitner, 9 boxar) + XP/rank/streak + grind-position |
+| [js/audio.js](js/audio.js) | Talsyntes ja-JP: röstranking + användarvald röst (settings.voiceURI) |
+| [js/grind.js](js/grind.js) | Ordmaraton: 10k-banan, rundor, ordlista, kana-stavelser, romaji-toggle |
+| [data/wordbank.js](data/wordbank.js) | Laddare för words1/words2 (genererade — redigera EJ för hand) |
 | [js/kanaUtils.js](js/kanaUtils.js) | kana↔romaji, IME-parser (accepterar Hepburn + Kunrei) |
 | [data/kana.js](data/kana.js) | 92 kana med svenska mnemonics + lektionsindelning |
 | [data/vocab.js](data/vocab.js) | ~330 N5-ord, 18 teman, exempelmeningar |

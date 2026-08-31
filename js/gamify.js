@@ -18,6 +18,7 @@ const QUEST_POOL = [
   { id:'write',   type:'write',  target:6,  label:'6 rätt skriv- eller ritövningar', xp:15, emoji:'✍️' },
   { id:'arcade',  type:'arcade', target:15, label:'Nå 15 poäng i Kana-regn',       xp:20, emoji:'🌧️' },
   { id:'combo',   type:'combo',  target:8,  label:'Nå kombo ×8 i en övning',       xp:15, emoji:'🔥' },
+  { id:'grind20', type:'grind',  target:20, label:'Maratona 20 ord',               xp:20, emoji:'🎯' },
 ];
 const MAX_TYPES = new Set(['arcade', 'combo']); // dessa mäter bästa resultat, inte summa
 
@@ -109,6 +110,18 @@ export const ACHIEVEMENTS = [
     check: s => COURSE_LESSONS.slice(0, 6).every(l => (s.lessons[l.id] || 0) > 0) },
   { id:'course-all',   name:'HELA Genki I! 🎉',   emoji:'🏯', desc:'Klara kursens alla 12 kapitel',
     check: s => COURSE_LESSONS.every(l => (s.lessons[l.id] || 0) > 0) },
+  { id:'grind-500',    name:'500 ord',            emoji:'🎯', desc:'500 ord i Ordmaraton',
+    check: s => (s.grind?.pos || 0) >= 500 },
+  { id:'grind-1000',   name:'Tusenklubban',       emoji:'🏅', desc:'1 000 ord i Ordmaraton',
+    check: s => (s.grind?.pos || 0) >= 1000 },
+  { id:'grind-2000',   name:'2 000 ord',          emoji:'⛰️', desc:'2 000 ord i Ordmaraton',
+    check: s => (s.grind?.pos || 0) >= 2000 },
+  { id:'grind-3000',   name:'MÅLET: 3 000 ord!',  emoji:'👑', desc:'Japanskans vanligaste ord — avklarade',
+    check: s => (s.grind?.pos || 0) >= 3000 },
+  { id:'grind-5000',   name:'5 000 ord',          emoji:'🌋', desc:'Halvvägs till 10 000',
+    check: s => (s.grind?.pos || 0) >= 5000 },
+  { id:'grind-10000',  name:'HELA BANAN — 10 000!', emoji:'🗻', desc:'Alla ord i maratonet avklarade',
+    check: s => (s.grind?.pos || 0) >= 10000 },
 ];
 
 export function checkAchievements() {

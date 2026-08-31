@@ -403,3 +403,31 @@ canvas.drawpad {
 .rain-wrap-fixed .rain-input { margin: 0 auto; width: 100%; }
 .rain-wrap-fixed .kana-preview { min-height: 1.4rem; margin: 0; }
 button.rain-exit { cursor: pointer; font-weight: 700; color: var(--red); min-width: 40px; }
+
+/* ---------- Ordmaraton ---------- */
+.journey.goal .progressbar > span, .journey.goal .progressbar > div { background: var(--gold); }
+.journey.goal .j-pct b { color: var(--gold); }
+.wordbrowse { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.wordrow {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 14px; color: var(--text); cursor: pointer;
+}
+.wordrow:hover { border-color: var(--blue); }
+.wordrow.done { opacity: .55; }
+.wordrow .w-r { color: var(--muted); font-size: .72rem; min-width: 44px; }
+.wordrow .w-jp { font-size: 1.45rem; min-width: 74px; }
+.wordrow .w-mid { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.wordrow .w-kana { font-size: .95rem; }
+.wordrow .w-romaji { color: var(--gold); font-size: .8rem; }
+.wordrow .w-sv { color: var(--muted); font-size: .88rem; text-align: right; max-width: 42%; }
+.voice-select {
+  width: 100%; background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; font-size: .95rem; font-family: inherit;
+}
+.wordrow .w-kana { display: flex; flex-wrap: wrap; gap: 2px; }
+.kana-tap {
+  font-size: .95rem; padding: 0 3px; border-radius: 6px; cursor: pointer;
+  color: var(--text); background: transparent; border: 1px solid transparent;
+}
+.kana-tap:hover, .kana-tap:active { border-color: var(--blue); color: var(--blue); }

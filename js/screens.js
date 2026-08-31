@@ -1,7 +1,9 @@
 // screens — alla vyer utom provläget.
 
 import { el, starsHTML, confetti, escapeHTML } from './ui.js';
-import { speak, stopSpeech, hasJapaneseVoice, voiceName } from './audio.js';
+import { speak, stopSpeech, hasJapaneseVoice, voiceName, listJapaneseVoices, setVoiceURI } from './audio.js';
+import { understoodCount } from './grind.js';
+import { WORD_GOAL, WORDS } from '../data/wordbank.js';
 import { S, save, addXP, rank, touchStreak, streakDays, srsAdd, srsDue, srsStats, srsBox,
          setLessonStars, lessonStars, resetAll } from './state.js';
 import { runDrill, kanaDrill, vocabDrill, kanjiDrill, mcQ, typeQ, drawQ, matchingGame, mcOptions } from './exercises.js';
@@ -129,6 +131,13 @@ export function renderHome(root, nav) {
   const kanjiDone = KANJI_LESSONS.filter(l => lessonStars(l.id) > 0).length;
   const gramDone = GRAMMAR_LESSONS.filter(l => lessonStars(l.id) > 0).length;
 
+  // ORDMÅLET — det personliga huvudmålet: förstå de 3 000 vanligaste orden
+  const understood = understoodCount();
+  const wordGoal = el('div', 'journey goal');
+  wordGoal.innerHTML = `<span>🎯</span><span class="progressbar"><span style="width:${Math.min(100, Math.round(100 * understood / WORD_GOAL))}%"></span></span><span>👑</span>
+    <span class="j-pct"><b>${understood.toLocaleString('sv-SE')}</b> av ${WORD_GOAL.toLocaleString('sv-SE')} ord — ditt ordmål</span>`;
+  root.appendChild(wordGoal);
+
   // Vägen till N5 — total viktad progress
   const overall = 0.15 * (hiraDone / hiraLessons.length) + 0.15 * (kataDone / kataLessons.length)
     + 0.30 * (vocabInSrs / VOCAB.length) + 0.20 * (kanjiDone / KANJI_LESSONS.length)
@@ -142,6 +151,7 @@ export function renderHome(root, nav) {
     { emoji:'🌸', name:'Hiragana', desc:'Grundskriften — börja här!', pct: hiraDone / hiraLessons.length, go:['kana', { script:'hira' }] },
     { emoji:'⚡', name:'Katakana', desc:'För lånord — kaffe, spel, Sverige…', pct: kataDone / kataLessons.length, go:['kana', { script:'kata' }] },
     { emoji:'🎓', name:'Kursen', desc:'Följer Genki I kapitel för kapitel — dialog + drillar', pct: COURSE_LESSONS.filter(l => lessonStars(l.id) > 0).length / COURSE_LESSONS.length, go:['course'] },
+    { emoji:'🎯', name:'Ordmaraton', desc:`${S.grind.pos.toLocaleString('sv-SE')} av ${WORDS.length.toLocaleString('sv-SE')} ord drillade — de ${WORD_GOAL.toLocaleString('sv-SE')} vanligaste först`, pct: Math.min(1, understood / WORD_GOAL), go:['grind'] },
     { emoji:'🍜', name:'Ordförråd', desc: vocabInSrs + ' av ' + VOCAB.length + ' N5-ord påbörjade', pct: vocabInSrs / VOCAB.length, go:['vocab'] },
     { emoji:'🖌️', name:'Kanji', desc:'80 N5-kanji med exempel', pct: kanjiDone / KANJI_LESSONS.length, go:['kanjiModule'] },
     { emoji:'🧩', name:'Grammatik', desc:'Partiklar, verb & adjektiv', pct: gramDone / GRAMMAR_LESSONS.length, go:['grammarModule'] },
@@ -733,12 +743,24 @@ export function renderGrammarLesson(root, nav, { lessonId }) {
 
   const startQuiz = () => {
     host.innerHTML = '';
-    const qs = shuffle(lesson.quiz).map(q => mcQ({
-      prompt: escapeHTML(q.q).replace(/___/g, '<b style="color:var(--gold)">___</b>') + (q.sv ? `<br><small>${escapeHTML(q.sv)}</small>` : ''),
-      options: q.opts.map((o, oi) => ({ label: o, jp: /[぀-ヿ一-鿿]/.test(o) })),
-      correctIdx: q.correct,
-      itemId: 'g_' + lessonId,
-    }));
+    const qs = shuffle(lesson.quiz).map(q => {
+      // Ljud: läs meningen med paus i luckan; vid rätt svar läses hela meningen.
+      // Bara för rent japanska frågor — blandade ("Jag är inte lärare" = …) låter fel med ja-röst.
+      const pureJP = /[぀-ヿ一-鿿]/.test(q.q) && !/[A-Za-z]/.test(q.q.replace(/___/g, ''));
+      const fullSentence = pureJP ? q.q.replace(/___/g, q.opts[q.correct]) : null;
+      // sv-raden kan vara en förklaring som avslöjar svaret — göm den tills efter rätt svar
+      const spoiler = q.sv && q.sv.toLowerCase().includes(String(q.opts[q.correct]).toLowerCase());
+      return mcQ({
+        prompt: escapeHTML(q.q).replace(/___/g, '<b style="color:var(--gold)">___</b>') + (q.sv && !spoiler ? `<br><small>${escapeHTML(q.sv)}</small>` : ''),
+        speakText: pureJP ? q.q.replace(/___/g, '、') : undefined,
+        autoSpeak: pureJP,
+        explain: spoiler ? q.sv : undefined,
+        options: q.opts.map((o, oi) => ({ label: o, jp: /[぀-ヿ一-鿿]/.test(o),
+          speakOnPick: oi === q.correct && fullSentence ? fullSentence : undefined })),
+        correctIdx: q.correct,
+        itemId: 'g_' + lessonId,
+      });
+    });
     runDrill(host, qs, {
       gradeSRS: false,
       onFinish(res) {
@@ -853,7 +875,7 @@ export function renderReview(root, nav) {
 }
 
 // ---------- RESULTAT ----------
-export function renderResult(root, nav, { title, stars, detail, backTo = 'home', backParams, nextTo, nextParams, chest = true }) {
+export function renderResult(root, nav, { title, stars, detail, backTo = 'home', backParams, nextTo, nextParams, nextLabel = 'Nästa lektion ›', chest = true }) {
   checkRankUp();
   const box = el('div', 'result');
   box.appendChild(el('h2', null, escapeHTML(title)));
@@ -880,7 +902,7 @@ export function renderResult(root, nav, { title, stars, detail, backTo = 'home',
   }
   const row = el('div', 'continue-row');
   if (nextTo) {
-    const nx = el('button', 'btn', 'Nästa lektion ›');
+    const nx = el('button', 'btn', escapeHTML(nextLabel));
     nx.onclick = () => nav.go(nextTo, nextParams);
     row.appendChild(nx);
     row.appendChild(document.createTextNode(' '));
@@ -911,14 +933,51 @@ export function renderSettings(root, nav) {
   };
   list.appendChild(mkToggle('Långsamt uttal', 'Talsyntesen pratar långsammare', 'slowAudio'));
   list.appendChild(mkToggle('Autospela ljud', 'Läs upp tecken/ord automatiskt', 'autoplay'));
+  list.appendChild(mkToggle('Visa romaji', 'Latinsk skrift under japanska ord (går även att växla inne i Ordmaraton)', 'showRomaji'));
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const test = el('div', 'setting-row');
-  test.innerHTML = `<div class="t"><b>Testa japansk röst</b><span>${voiceName() ? 'Röst: ' + escapeHTML(voiceName()) : '⚠️ Ingen japansk röst hittad'}${isIOS ? '<br>📱 OBS: ljudlös-knappen på iPhonens sida tystar rösten — slå på ljudet!' : ''}</span></div>`;
+
+  // Röstväljare — alla japanska röster på enheten, bästa först
+  const voiceRow = el('div', 'setting-row');
+  voiceRow.innerHTML = `<div class="t"><b>🗣️ Japansk röst</b><span>${voiceName() ? 'Vald: ' + escapeHTML(voiceName()) : '⚠️ Ingen japansk röst hittad'}${isIOS ? '<br>📱 OBS: ljudlös-knappen på iPhonens sida tystar rösten — slå på ljudet!' : ''}</span></div>`;
   const tb = el('button', 'btn small', '🔊 Test');
   tb.onclick = () => speak('こんにちは！日本語を勉強しましょう！', { rate: 0.9 });
-  test.appendChild(tb);
-  list.appendChild(test);
+  voiceRow.appendChild(tb);
+  list.appendChild(voiceRow);
+
+  const sel = document.createElement('select');
+  sel.className = 'voice-select';
+  const fillVoices = () => {
+    const voices = listJapaneseVoices();
+    if (!voices.length) { sel.innerHTML = '<option>Inga japanska röster hittade än…</option>'; return; }
+    sel.innerHTML = '';
+    voices.forEach((v, i) => {
+      const o = document.createElement('option');
+      o.value = v.voiceURI;
+      o.textContent = v.name + (i === 0 && !S.settings.voiceURI ? ' ★ (rekommenderad)' : '');
+      if ((S.settings.voiceURI && v.voiceURI === S.settings.voiceURI) || (!S.settings.voiceURI && i === 0)) o.selected = true;
+      sel.appendChild(o);
+    });
+  };
+  fillVoices();
+  for (const t of [500, 1500, 3000]) setTimeout(() => { if (sel.isConnected && sel.options.length <= 1) fillVoices(); }, t);
+  sel.onchange = () => {
+    setVoiceURI(sel.value);
+    speak('こんにちは！この声はどうですか？', { rate: 0.9 });
+    const sub = voiceRow.querySelector('.t span');
+    if (sub) sub.textContent = 'Vald: ' + (voiceName() || '?');
+  };
+  const selWrap = el('div', 'setting-row');
+  selWrap.appendChild(sel);
+  list.appendChild(selWrap);
+
+  const voiceTip = el('div', 'notice');
+  voiceTip.innerHTML = isIOS
+    ? '<b>💡 Skarpare röst på iPhone:</b> Inställningar → Hjälpmedel → Talat innehåll → Röster → Japanska — ' +
+      'ladda ner <b>Kyoko (förbättrad)</b> eller en premiumröst. Starta sedan om appen så dyker den upp i listan ovan.'
+    : '<b>💡 Skarpare röst på datorn:</b> Edge har den naturligaste rösten (Nanami Online). I Windows: ' +
+      'Inställningar → Tid och språk → Språk → Lägg till japanska (med tal) för fler röster.';
+  list.appendChild(voiceTip);
 
   // iPhone-badge (röd siffra på ikonen)
   const badge = el('div', 'setting-row');
@@ -997,8 +1056,13 @@ export function renderSettings(root, nav) {
 
   const st = srsStats();
   const stats = el('div', 'setting-row');
-  stats.innerHTML = `<div class="t"><b>Statistik</b><span>${st.total} kort i repetitionen · ${st.mastered} mästrade · ${S.xp} XP</span></div>`;
+  stats.innerHTML = `<div class="t"><b>Statistik</b><span>${st.total} kort i repetitionen · ${st.mastered} mästrade · ${S.xp} XP · ${S.grind.pos.toLocaleString('sv-SE')} maratonord</span></div>`;
   list.appendChild(stats);
+
+  const attrib = el('div', 'prompt-label center');
+  attrib.style.marginTop = '10px';
+  attrib.innerHTML = 'Ordbanken bygger på <a href="https://www.edrdg.org/jmdict/j_jmdict.html" target="_blank" rel="noopener" style="color:var(--muted)">JMdict</a> (EDRDG, CC BY-SA 4.0) och frekvensdata från University of Leeds-korpusen (CC BY).';
+  list.appendChild(attrib);
 
   const reset = el('div', 'setting-row');
   reset.innerHTML = `<div class="t"><b>Nollställ allt</b><span>Raderar all progress — går inte att ångra!</span></div>`;

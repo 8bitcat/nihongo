@@ -23,7 +23,8 @@ function freshState() {
     streak: { last: null, count: 0, freezes: 0 },
     lessons: {},   // lessonId -> stjärnor 1–3
     srs: {},       // itemId -> { box, due, right, wrong }
-    settings: { slowAudio: false, autoplay: true },
+    settings: { slowAudio: false, autoplay: true, voiceURI: null, showRomaji: true },
+    grind: { pos: 0, lastId: null }, // Ordmaraton: position i 10k-banan + id-ankare
     bestTest: null, // bästa provresultat { score, total, pass, date }
     level: 'N5',
     quests: { date: null, progress: {}, claimed: [] }, // dagens uppdrag
@@ -48,6 +49,7 @@ function load() {
       merged.quests = { ...fresh.quests, ...(saved.quests || {}) };
       merged.counters = { ...fresh.counters, ...(saved.counters || {}) };
       merged.streak = { ...fresh.streak, ...(saved.streak || {}) };
+      merged.grind = { ...fresh.grind, ...(saved.grind || {}) };
       return merged;
     }
   } catch { /* korrupt sparfil → börja om */ }

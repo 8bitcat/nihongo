@@ -3,7 +3,7 @@
 
 import { el, escapeHTML } from './ui.js';
 import { speak, stopSpeech } from './audio.js';
-import { romajiToKana, romajiMatchesKana, shuffle, pick } from './kanaUtils.js';
+import { romajiToKana, romajiMatchesKana, kanaToRomaji, shuffle, pick } from './kanaUtils.js';
 import { S, srsGrade, addXP } from './state.js';
 import { track, reportCombo } from './gamify.js';
 
@@ -12,7 +12,7 @@ const rate = () => (S.settings.slowAudio ? 0.7 : 0.9);
 // ---------- Frågefabriker ----------
 // Varje fråga: { qtype?, itemId?, render(container, done) } där done(correct, firstTry)
 
-export function mcQ({ prompt, promptJP, promptEmoji, speakText, autoSpeak, options, correctIdx, itemId, note, emojiOpts, qtype }) {
+export function mcQ({ prompt, promptJP, promptEmoji, speakText, autoSpeak, options, correctIdx, itemId, note, explain, emojiOpts, qtype }) {
   return { itemId, qtype, render(root, done) {
     const ex = el('div', 'exercise');
     if (prompt) ex.appendChild(el('div', 'prompt-label', prompt));
@@ -38,11 +38,12 @@ export function mcQ({ prompt, promptJP, promptEmoji, speakText, autoSpeak, optio
         if (i === correctIdx) {
           answered = true;
           b.classList.add('correct');
-          fb.textContent = firstTry ? 'Rätt! 正解！' : 'Rätt — nu sitter den!';
+          fb.innerHTML = (firstTry ? 'Rätt! 正解！' : 'Rätt — nu sitter den!') +
+            (explain ? `<br><small>${escapeHTML(explain)}</small>` : '');
           fb.className = 'feedback ok';
           if (o.speakOnPick) speak(o.speakOnPick, { rate: rate() });
           [...grid.children].forEach(c => { if (c !== b) c.classList.add('dim'); });
-          setTimeout(() => done(true, firstTry), firstTry ? 700 : 900);
+          setTimeout(() => done(true, firstTry), explain ? 1800 : firstTry ? 700 : 900);
         } else {
           firstTry = false;
           b.classList.add('wrong');
@@ -120,9 +121,14 @@ export function tileQ({ sv, tiles, extra = [], itemId }) {
     ex.appendChild(el('div', 'prompt-label', 'Bygg meningen:'));
     ex.appendChild(el('div', 'tile-target', escapeHTML(sv)));
     const built = el('div', 'tile-built jp', '');
+    // Romaji-rad som byggs i takt med brickorna (bara när brickorna är ren kana)
+    const allKana = [...tiles, ...extra].every(t => /^[぀-ゟ゠-ヿー]+$/.test(t));
+    const romajiLine = allKana && S.settings.showRomaji !== false ? el('div', 'kana-preview', '') : null;
     const bank = el('div', 'tile-bank');
     const fb = el('div', 'feedback');
     let pos = 0, firstTry = true, doneFlag = false;
+    const builtTiles = [];
+    const tileRomaji = t => t === 'は' ? 'wa' : t === 'へ' ? 'e' : t === 'を' ? 'o' : kanaToRomaji(t);
     const all = shuffle([...tiles, ...extra]);
     for (const label of all) {
       const b = el('button', 'tile jp', escapeHTML(label));
@@ -133,6 +139,8 @@ export function tileQ({ sv, tiles, extra = [], itemId }) {
           b.disabled = true;
           b.classList.add('used');
           built.textContent += label;
+          builtTiles.push(label);
+          if (romajiLine) romajiLine.textContent = builtTiles.map(tileRomaji).join(' ');
           fb.textContent = '';
           if (pos === tiles.length) {
             doneFlag = true;
@@ -152,6 +160,7 @@ export function tileQ({ sv, tiles, extra = [], itemId }) {
       bank.appendChild(b);
     }
     ex.appendChild(built);
+    if (romajiLine) ex.appendChild(romajiLine);
     ex.appendChild(bank);
     ex.appendChild(fb);
     root.appendChild(ex);
@@ -313,7 +322,7 @@ export function drawQ({ glyph, label, speakText, itemId, blind = false }) {
 // ---------- Drillkörning ----------
 // questions: lista av frågor. onFinish({correctFirstTry, total}).
 // Boss-läge: maxWrong (antal tillåtna fel) + onFail — hjärtan visas och drillen avbryts vid för många fel.
-export function runDrill(root, questions, { onFinish, gradeSRS = true, maxWrong = null, onFail = null, noRequeue = false }) {
+export function runDrill(root, questions, { onFinish, onAnswer = null, gradeSRS = true, maxWrong = null, onFail = null, noRequeue = false }) {
   const queue = questions.slice();
   const totalOriginal = questions.length;
   let idx = 0;
@@ -372,6 +381,7 @@ export function runDrill(root, questions, { onFinish, gradeSRS = true, maxWrong 
           wrongCount++;
         }
         if (gradeSRS && q.itemId) srsGrade(q.itemId, firstTry && correct);
+        onAnswer?.(q, correct, firstTry);
       } else if (correct) {
         addXP(1);
       }

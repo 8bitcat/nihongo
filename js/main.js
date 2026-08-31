@@ -6,6 +6,7 @@ import { renderTestIntro, renderTestRun } from './test.js';
 import { renderArcade } from './arcade.js';
 import { renderReading, renderMangaGuide, renderManga, renderStory } from './reading.js';
 import { renderCourse, renderCourseLesson } from './course.js';
+import { renderGrind, renderGrindRun, renderGrindList } from './grind.js';
 import { initBadge } from './badge.js';
 
 const app = document.getElementById('app');
@@ -31,6 +32,9 @@ const routes = {
   course: renderCourse,
   courseLesson: renderCourseLesson,
   arcade: renderArcade,
+  grind: renderGrind,
+  grindRun: renderGrindRun,
+  grindList: renderGrindList,
   achievements: screens.renderAchievements,
   boss: screens.renderBoss,
   reading: renderReading,

@@ -1,25 +1,44 @@
 // audio — japansk talsyntes via Web Speech API.
-// Bäst röster: Edge (Nanami online), Chrome (Google 日本語). Fallback: valfri ja-röst.
+// Bäst röster: Edge (Nanami online), Chrome (Google 日本語), iOS (Kyoko förbättrad — måste
+// laddas ner i iOS-inställningarna först). Användaren kan välja röst i Inställningar.
+
+import { S, save } from './state.js';
 
 let voice = null;
 let voicesLoaded = false;
 
+// Rangordning: naturliga/förbättrade röster först
+function voiceScore(v) {
+  const n = v.name.toLowerCase();
+  if (n.includes('nanami')) return 7;
+  if (n.includes('enhanced') || n.includes('förbättrad') || n.includes('premium')) return 6;
+  if (n.includes('online') || n.includes('natural')) return 5;
+  if (n.includes('google')) return 4;
+  if (n.includes('siri')) return 3;
+  if (n.includes('keita') || n.includes('ayumi') || n.includes('haruka') || n.includes('o-ren') || n.includes('kyoko')) return 2;
+  return 1;
+}
+
+export function listJapaneseVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  return speechSynthesis.getVoices()
+    .filter(v => v.lang && v.lang.toLowerCase().startsWith('ja'))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
 function pickVoice() {
-  const voices = speechSynthesis.getVoices();
-  const ja = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('ja'));
+  const ja = listJapaneseVoices();
   if (ja.length === 0) { voice = null; voicesLoaded = true; return; }
-  // Rangordning: naturliga onlineröster först
-  const score = v => {
-    const n = v.name.toLowerCase();
-    if (n.includes('nanami')) return 5;
-    if (n.includes('online') || n.includes('natural')) return 4;
-    if (n.includes('google')) return 3;
-    if (n.includes('keita') || n.includes('ayumi') || n.includes('haruka')) return 2;
-    return 1;
-  };
-  ja.sort((a, b) => score(b) - score(a));
-  voice = ja[0];
+  // Användarens sparade val vinner, om rösten fortfarande finns
+  const saved = S.settings.voiceURI && ja.find(v => v.voiceURI === S.settings.voiceURI);
+  voice = saved || ja[0];
   voicesLoaded = true;
+}
+
+export function setVoiceURI(uri) {
+  S.settings.voiceURI = uri || null;
+  save();
+  pickVoice();
 }
 
 // iOS (särskilt hemskärmsappar) blockerar talsyntes tills den "låsts upp" av en

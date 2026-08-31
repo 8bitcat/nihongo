@@ -162,9 +162,15 @@ export function renderCourseLesson(root, nav, { lessonId }) {
       ...d.qa.map(q => {
         const opts = q.opts.map((o, i) => ({ o, i }));
         const shuffled = shuffle(opts);
+        // Ljud: rent japanska frågor läses upp (paus i luckan); rätt svar → hela meningen
+        const pureJP = /[぀-ヿ一-鿿]/.test(q.q) && !/[A-Za-z]/.test(q.q.replace(/___/g, ''));
+        const fullSentence = pureJP ? q.q.replace(/___/g, q.opts[q.correct]) : null;
         return mcQ({
-          prompt: escapeHTML(q.q),
-          options: shuffled.map(x => ({ label: x.o, jp: /[぀-ヿ一-鿿]/.test(x.o) })),
+          prompt: escapeHTML(q.q).replace(/___/g, '<b style="color:var(--gold)">___</b>'),
+          speakText: pureJP ? q.q.replace(/___/g, '、') : undefined,
+          autoSpeak: pureJP,
+          options: shuffled.map(x => ({ label: x.o, jp: /[぀-ヿ一-鿿]/.test(x.o),
+            speakOnPick: x.i === q.correct && fullSentence ? fullSentence : undefined })),
           correctIdx: shuffled.findIndex(x => x.i === q.correct),
         });
       }),
