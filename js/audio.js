@@ -22,6 +22,21 @@ function pickVoice() {
   voicesLoaded = true;
 }
 
+// iOS (särskilt hemskärmsappar) blockerar talsyntes tills den "låsts upp" av en
+// användargest. Första tryck var som helst spelar en tyst tom yttring — därefter
+// fungerar även automatisk uppläsning (via setTimeout).
+let unlocked = false;
+function unlockAudio() {
+  if (unlocked || !('speechSynthesis' in window)) return;
+  unlocked = true;
+  try {
+    speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+  } catch { /* upplåsning är best effort */ }
+}
+
 export function initAudio() {
   if (!('speechSynthesis' in window)) { voicesLoaded = true; return; }
   pickVoice();
@@ -30,6 +45,8 @@ export function initAudio() {
   for (const t of [200, 600, 1200, 2500, 4000]) {
     setTimeout(() => { if (!voice) pickVoice(); }, t);
   }
+  document.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
+  document.addEventListener('keydown', unlockAudio, { once: true, capture: true });
 }
 
 export function hasJapaneseVoice() {
@@ -40,14 +57,24 @@ export function hasJapaneseVoice() {
 export function speak(text, { rate = 0.9, onend } = {}) {
   if (!('speechSynthesis' in window)) { onend?.(); return; }
   if (!voice) pickVoice();
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ja-JP';
-  if (voice) u.voice = voice;
-  u.rate = rate;
-  u.pitch = 1;
-  if (onend) u.onend = onend;
-  speechSynthesis.speak(u);
+  const doSpeak = () => {
+    try { speechSynthesis.resume(); } catch { /* iOS kan fastna i paused-läge */ }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP';
+    if (voice) u.voice = voice;
+    u.rate = rate;
+    u.pitch = 1;
+    u.volume = 1;
+    if (onend) u.onend = onend;
+    speechSynthesis.speak(u);
+  };
+  // iOS-race: cancel() direkt följt av speak() blir ibland helt tyst — vänta en tick
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    setTimeout(doSpeak, 80);
+  } else {
+    doSpeak();
+  }
 }
 
 export function stopSpeech() {

@@ -910,8 +910,9 @@ export function renderSettings(root, nav) {
   list.appendChild(mkToggle('Långsamt uttal', 'Talsyntesen pratar långsammare', 'slowAudio'));
   list.appendChild(mkToggle('Autospela ljud', 'Läs upp tecken/ord automatiskt', 'autoplay'));
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const test = el('div', 'setting-row');
-  test.innerHTML = `<div class="t"><b>Testa japansk röst</b><span>${voiceName() ? 'Röst: ' + escapeHTML(voiceName()) : '⚠️ Ingen japansk röst hittad'}</span></div>`;
+  test.innerHTML = `<div class="t"><b>Testa japansk röst</b><span>${voiceName() ? 'Röst: ' + escapeHTML(voiceName()) : '⚠️ Ingen japansk röst hittad'}${isIOS ? '<br>📱 OBS: ljudlös-knappen på iPhonens sida tystar rösten — slå på ljudet!' : ''}</span></div>`;
   const tb = el('button', 'btn small', '🔊 Test');
   tb.onclick = () => speak('こんにちは！日本語を勉強しましょう！', { rate: 0.9 });
   test.appendChild(tb);
