@@ -10,7 +10,7 @@ Senast uppdaterad: 2026-08-31 (v2.6 — Kursen/Genki-spåret)
   Kap 1–6 fullt byggda: grammatikpunkter → dialog (replik för replik med TTS/romaji/svenska) →
   drill med nya övningstyper: **tileQ** (meningsbyggare — Genkis mönsterdrill), böjningsdrill
   (typeQ: ます/dåtid/adjektiv/て-form), frågor, och **sifferlyssning** (genererade klockslag med
-  よじ/しちじ/くじ + priser med さんびゃく/ろっぴゃく/はっせん-ljudförändringar). Kap 7–12 som
+  よじ/しちじ/くじ + priser med さんびゃく/ろっぴゃく/はっせん-ljudförändringar). Kap 7–12 byggda 2026-08-31 (samma struktur; kortformer, jämförelser, たい, んです m.m. + personräknings-lyssning). Tidigare som
   låsta stubbar ("del 2"). 2 nya utmärkelser. PDF-rendering: scratchpad/genki-render2.js
   (pdfjs i Chromium — @napi-rs/canvas segfaultar på denna maskin).
 

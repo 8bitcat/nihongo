@@ -106,7 +106,9 @@ export const ACHIEVEMENTS = [
   { id:'course-start', name:'Kursstart',          emoji:'🎓', desc:'Klara kursens första kapitel',
     check: s => (s.lessons['kurs-1'] || 0) > 0 },
   { id:'course-half',  name:'Halva boken!',       emoji:'📗', desc:'Klara kursens kapitel 1–6',
-    check: s => COURSE_LESSONS.filter(l => !l.locked).every(l => (s.lessons[l.id] || 0) > 0) },
+    check: s => COURSE_LESSONS.slice(0, 6).every(l => (s.lessons[l.id] || 0) > 0) },
+  { id:'course-all',   name:'HELA Genki I! 🎉',   emoji:'🏯', desc:'Klara kursens alla 12 kapitel',
+    check: s => COURSE_LESSONS.every(l => (s.lessons[l.id] || 0) > 0) },
 ];
 
 export function checkAchievements() {

@@ -7,7 +7,7 @@ import { S, addXP, touchStreak, setLessonStars, lessonStars } from './state.js';
 import { track, checkAchievements } from './gamify.js';
 import { runDrill, mcQ, typeQ, tileQ } from './exercises.js';
 import { sentenceRomaji, shuffle, randInt } from './kanaUtils.js';
-import { COURSE_LESSONS, HOUR_READINGS, HUNDRED_READINGS, THOUSAND_READINGS } from '../data/course.js';
+import { COURSE_LESSONS, HOUR_READINGS, HUNDRED_READINGS, THOUSAND_READINGS, PEOPLE_READINGS } from '../data/course.js';
 
 function topbar(root, nav, title, backTo = 'course') {
   const bar = el('div', 'topbar');
@@ -50,6 +50,18 @@ function priceQuestion() {
     prompt: 'Lyssna — vad kostar det?', speakText: reading, autoSpeak: true, qtype: 'listen',
     options: options.map(p => ({ label: p.toLocaleString('sv-SE') + ' yen' })),
     correctIdx: options.indexOf(price),
+  });
+}
+
+function peopleQuestion() {
+  const n = 1 + randInt(10);
+  const opts = new Set([n]);
+  while (opts.size < 4) opts.add(1 + randInt(10));
+  const options = shuffle([...opts]);
+  return mcQ({
+    prompt: 'Lyssna — hur många personer?', speakText: PEOPLE_READINGS[n], autoSpeak: true, qtype: 'listen',
+    options: options.map(x => ({ label: x + (x === 1 ? ' person' : ' personer') })),
+    correctIdx: options.indexOf(n),
   });
 }
 
@@ -159,6 +171,7 @@ export function renderCourseLesson(root, nav, { lessonId }) {
     ];
     if (d.numbers === 'time') qs.push(timeQuestion(), timeQuestion(), timeQuestion());
     if (d.numbers === 'price') qs.push(priceQuestion(), priceQuestion(), priceQuestion());
+    if (d.numbers === 'people') qs.push(peopleQuestion(), peopleQuestion(), peopleQuestion());
     runDrill(host, shuffle(qs), {
       gradeSRS: false,
       onFinish(res) {
