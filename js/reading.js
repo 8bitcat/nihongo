@@ -8,6 +8,8 @@ import { track, checkAchievements, showToast } from './gamify.js';
 import { runDrill, mcQ, mcOptions } from './exercises.js';
 import { sentenceRomaji, shuffle } from './kanaUtils.js';
 import { MANGA, STORIES, ONOMATOPOEIA } from '../data/stories.js';
+import { LADDER_STORIES } from '../data/ladder.js';
+import { understoodCount } from './grind.js';
 
 function topbar(root, nav, title, backTo = 'reading', backParams) {
   const bar = el('div', 'topbar');
@@ -46,6 +48,24 @@ export function renderReading(root, nav) {
     mlist.appendChild(row);
   }
   root.appendChild(mlist);
+
+  // Läs-stegen: texter skrivna med ord ur Ordmaraton-banan — låses upp av din position
+  const u = understoodCount();
+  root.appendChild(el('div', 'sectionlabel', '📈 Läs-stegen — låses upp av Ordmaraton'));
+  const llist = el('div', 'lessonlist');
+  for (const s of LADDER_STORIES) {
+    const unlocked = u >= s.req;
+    const row = el('button', 'lesson-row' + (unlocked ? '' : ' locked'));
+    row.innerHTML = `<span class="num">${unlocked ? s.emoji : '🔒'}</span>
+      <span class="mid"><span class="title${unlocked ? ' jp' : ''}">${escapeHTML(unlocked ? s.title : s.titleSv)}</span>
+      <span class="preview">${unlocked
+        ? escapeHTML(s.titleSv) + ' · ' + s.pages.length + ' sidor · ' + escapeHTML(s.level)
+        : 'Låses upp vid ' + s.req.toLocaleString('sv-SE') + ' ord — du har ' + u.toLocaleString('sv-SE')}</span></span>
+      ${unlocked ? starsHTML(lessonStars(s.id)) : ''}`;
+    if (unlocked) row.onclick = () => nav.go('story', { storyId: s.id });
+    llist.appendChild(row);
+  }
+  root.appendChild(llist);
 
   root.appendChild(el('div', 'sectionlabel', '📚 Sagor — som barnböcker, med ljud'));
   const slist = el('div', 'lessonlist');
@@ -322,14 +342,16 @@ export function renderManga(root, nav, { mangaId }) {
   }
 }
 
-// ---------- SAGOLÄSAREN ----------
+// ---------- SAGOLÄSAREN (sagor + Läs-stegen) ----------
 export function renderStory(root, nav, { storyId }) {
-  const story = STORIES.find(s => s.id === storyId);
+  const story = STORIES.find(s => s.id === storyId) || LADDER_STORIES.find(s => s.id === storyId);
+  const isLadder = story.id.startsWith('ladder-');
+  if (isLadder && understoodCount() < story.req) { nav.go('reading'); return; }
   topbar(root, nav, story.title + ' — ' + story.titleSv);
   const host = el('div');
   root.appendChild(host);
   let page = 0;
-  let showRomaji = false, showSv = false;
+  let showRomaji = S.settings.showRomaji !== false, showSv = false;
 
   const render = () => {
     stopSpeech();
@@ -337,7 +359,8 @@ export function renderStory(root, nav, { storyId }) {
     const p = story.pages[page];
     const ex = el('div', 'exercise');
     ex.appendChild(el('div', 'prompt-label', `Sida ${page + 1} av ${story.pages.length}`));
-    ex.appendChild(el('div', 'story-img', escapeHTML(p.img)));
+    if (story.cover) ex.appendChild(Object.assign(document.createElement('img'), { className: 'story-pic', src: story.cover, alt: '' }));
+    else ex.appendChild(el('div', 'story-img', escapeHTML(p.img)));
     ex.appendChild(el('div', 'story-text jp', escapeHTML(p.jp)));
     const romajiEl = el('div', 'kana-preview', showRomaji ? escapeHTML(sentenceRomaji(p.jp)) : '');
     ex.appendChild(romajiEl);
@@ -396,13 +419,16 @@ export function renderStory(root, nav, { storyId }) {
         track('lesson', 1);
         checkAchievements();
         confetti();
-        const idx = STORIES.findIndex(s => s.id === storyId);
-        const nextS = STORIES[idx + 1];
+        const list = isLadder ? LADDER_STORIES : STORIES;
+        const idx = list.findIndex(s => s.id === storyId);
+        let nextS = list[idx + 1];
+        if (isLadder && nextS && understoodCount() < nextS.req) nextS = null; // nästa steg ännu låst
         nav.go('result', {
           title: story.titleSv + ' — läst!', stars,
           detail: `${res.correctFirstTry} av ${res.total} rätt på frågorna`,
           backTo: 'reading',
           nextTo: nextS ? 'story' : null, nextParams: nextS ? { storyId: nextS.id } : null,
+          nextLabel: 'Nästa text ›',
         });
       },
     });

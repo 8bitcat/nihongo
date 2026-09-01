@@ -8,6 +8,7 @@ import { kanaLessonsFor } from '../data/kana.js';
 import { KANJI_LESSONS } from '../data/kanji.js';
 import { VOCAB } from '../data/vocab.js';
 import { MANGA, STORIES } from '../data/stories.js';
+import { LADDER_STORIES } from '../data/ladder.js';
 import { COURSE_LESSONS } from '../data/course.js';
 
 // ---------- Dagliga uppdrag ----------
@@ -122,6 +123,10 @@ export const ACHIEVEMENTS = [
     check: s => (s.grind?.pos || 0) >= 5000 },
   { id:'grind-10000',  name:'HELA BANAN — 10 000!', emoji:'🗻', desc:'Alla ord i maratonet avklarade',
     check: s => (s.grind?.pos || 0) >= 10000 },
+  { id:'ladder-first', name:'Stegläsare',           emoji:'📖', desc:'Läs din första text i Läs-stegen',
+    check: s => LADDER_STORIES.some(t => (s.lessons[t.id] || 0) > 0) },
+  { id:'ladder-all',   name:'Högst upp på stegen',  emoji:'📚', desc:'Läs alla texter i Läs-stegen',
+    check: s => LADDER_STORIES.every(t => (s.lessons[t.id] || 0) > 0) },
 ];
 
 export function checkAchievements() {

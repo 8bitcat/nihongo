@@ -1,6 +1,22 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-09-01 (v3.1 — mangan begriplig: bilder, tryck-fram-text, quiz)
+Senast uppdaterad: 2026-09-01 (v3.2 — Läs-stegen + maratonprognos)
+
+## v3.2 — Läs-stegen (comprehensible input)
+
+- **📈 Läs-stegen** ([data/ladder.js](data/ladder.js)): 8 graderade texter som låses upp av
+  Ordmaraton-positionen (250/500/750/1000/1500/2000/2500/3000 ord). REGEL: texten för steg N
+  använder nästan bara ord ur banans första N + de 334 lektionsorden — verifieras med
+  scratchpad-checkern `check_ladder.mjs` (tokeniserar på mellanslag, strippar partiklar/
+  böjningar/です-suffix; flaggor granskas manuellt). Håll regeln vid nya/ändrade texter!
+- Visas i Läsning-modulen (låsta rader visar kravet) och läses i sagoläsaren
+  ([js/reading.js](js/reading.js) `renderStory` hanterar nu STORIES ∪ LADDER_STORIES,
+  pixelart-cover via `story.cover`, romaji-startläge från settings.showRomaji).
+- **Prognos** ([js/grind.js](js/grind.js) `goalForecast`): ord/dag loggas i S.grind.daily,
+  snitt över senaste 7 aktiva dagar → "målet nås ca 11 oktober" på maratonsidan; där syns
+  också nästa stegtext med antal ord kvar. Upplåsning ger toast efter rundan.
+- 8 pixelart-omslag (img/manga/l1-l8.png) via scratchpad `gen_ladder_art.py` (samma
+  palett/sprites som mangapanelerna). 2 nya utmärkelser (Stegläsare / Högst upp på stegen).
 
 ## v3.1 — Mangaläsaren
 

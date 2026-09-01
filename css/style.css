@@ -439,3 +439,9 @@ button.rain-exit { cursor: pointer; font-weight: 700; color: var(--red); min-wid
 }
 .manga-panel .p-sfx { z-index: 2; }
 .manga-panel .p-bubble { z-index: 2; box-shadow: 2px 2px 0 rgba(26,26,26,.25); }
+
+/* ---------- Läs-stegen ---------- */
+.story-pic {
+  display: block; width: 192px; max-width: 72%; margin: 4px auto 12px;
+  image-rendering: pixelated; border: 3px solid #1a1a1a; border-radius: 4px;
+}

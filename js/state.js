@@ -24,7 +24,7 @@ function freshState() {
     lessons: {},   // lessonId -> stjärnor 1–3
     srs: {},       // itemId -> { box, due, right, wrong }
     settings: { slowAudio: false, autoplay: true, voiceURI: null, showRomaji: true },
-    grind: { pos: 0, lastId: null }, // Ordmaraton: position i 10k-banan + id-ankare
+    grind: { pos: 0, lastId: null, daily: {} }, // Ordmaraton: position, id-ankare, ord/dag (för prognos)
     bestTest: null, // bästa provresultat { score, total, pass, date }
     level: 'N5',
     quests: { date: null, progress: {}, claimed: [] }, // dagens uppdrag

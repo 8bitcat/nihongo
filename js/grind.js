@@ -8,8 +8,22 @@ import { speak, stopSpeech } from './audio.js';
 import { S, save, addXP, touchStreak, srsAdd, srsGrade } from './state.js';
 import { runDrill, mcQ, typeQ, tileQ, mcOptions } from './exercises.js';
 import { WORDS, WORD_GOAL } from '../data/wordbank.js';
+import { LADDER_STORIES } from '../data/ladder.js';
 import { kanaToRomaji, shuffle } from './kanaUtils.js';
 import { track, checkAchievements, showToast } from './gamify.js';
+
+// Prognos: snitt-takt över de senaste 7 dagarna med aktivitet → datum då målet nås
+export function goalForecast() {
+  const daily = S.grind.daily || {};
+  const days = Object.keys(daily).sort().slice(-7).filter(d => daily[d] > 0);
+  if (!days.length) return null;
+  const rate = Math.round(days.reduce((s, d) => s + daily[d], 0) / days.length);
+  if (rate < 1) return null;
+  const left = WORD_GOAL - understoodCount();
+  if (left <= 0) return { rate, done: true };
+  const eta = new Date(Date.now() + Math.ceil(left / rate) * 864e5);
+  return { rate, left, eta: eta.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long' }) };
+}
 
 const ROUND = 10;
 
@@ -158,6 +172,26 @@ export function renderGrind(root, nav) {
     <span class="j-pct"><b>${u.toLocaleString('sv-SE')}</b> av ${target.toLocaleString('sv-SE')} ord förstådda</span>`;
   root.appendChild(bar);
 
+  // Prognos + nästa text i Läs-stegen
+  const fc = goalForecast();
+  if (fc && !fc.done) {
+    root.appendChild(el('div', 'prompt-label center',
+      `🔥 Din takt: ~${fc.rate} ord/dag → målet nås ca <b>${escapeHTML(fc.eta)}</b>`));
+  }
+  const nextStory = LADDER_STORIES.find(s => s.req > u);
+  const ladderRow = el('button', 'lesson-row');
+  if (nextStory) {
+    ladderRow.innerHTML = `<span class="num">📖</span>
+      <span class="mid"><span class="title">Nästa text i Läs-stegen: ${escapeHTML(nextStory.titleSv)}</span>
+      <span class="preview">Låses upp vid ${nextStory.req.toLocaleString('sv-SE')} ord — ${(nextStory.req - u).toLocaleString('sv-SE')} kvar</span></span>`;
+  } else {
+    ladderRow.innerHTML = `<span class="num">📚</span>
+      <span class="mid"><span class="title">Hela Läs-stegen är upplåst!</span>
+      <span class="preview">Alla ${LADDER_STORIES.length} texter väntar i Läsning</span></span>`;
+  }
+  ladderRow.onclick = () => nav.go('reading');
+  root.appendChild(ladderRow);
+
   const next = WORDS.slice(pos, pos + ROUND);
   const btnRow = el('div', 'center mt');
   const go = el('button', 'btn', pos === 0 ? '▶ Starta maratonet!' : `▶ Drilla ord ${(pos + 1).toLocaleString('sv-SE')}–${(pos + next.length).toLocaleString('sv-SE')}`);
@@ -191,6 +225,7 @@ export function renderGrind(root, nav) {
 export function renderGrindRun(root, nav) {
   syncPos();
   const startPos = S.grind.pos;
+  const uStart = understoodCount();
   const words = WORDS.slice(startPos, startPos + ROUND);
   if (words.length === 0) { nav.go('grind'); return; }
   topbar(root, nav, `Ord ${(startPos + 1).toLocaleString('sv-SE')}–${(startPos + words.length).toLocaleString('sv-SE')}`, 'grind');
@@ -226,17 +261,25 @@ export function renderGrindRun(root, nav) {
       onFinish(res) {
         S.grind.pos = startPos + words.length;
         S.grind.lastId = words[words.length - 1].id;
+        const today = new Date().toISOString().slice(0, 10);
+        S.grind.daily = S.grind.daily || {};
+        S.grind.daily[today] = (S.grind.daily[today] || 0) + words.length;
         save();
         addXP(5);
         touchStreak();
         track('grind', words.length);
         checkAchievements();
         confetti();
-        // Milstolpar
+        // Milstolpar + upplåsta texter i Läs-stegen
         const u = understoodCount();
         for (const m of [500, 1000, 2000, WORD_GOAL, 5000, 7500, 10000]) {
           if (startPos < m && S.grind.pos >= m) {
             showToast(m === WORD_GOAL ? `👑 <b>MÅLET NÅTT — ${WORD_GOAL.toLocaleString('sv-SE')} ORD!</b> お見事！` : `🎯 Milstolpe: <b>${m.toLocaleString('sv-SE')} ord!</b>`);
+          }
+        }
+        for (const st of LADDER_STORIES) {
+          if (uStart < st.req && u >= st.req) {
+            showToast(`📖 Ny text upplåst i Läs-stegen: <b>${st.titleSv}</b>!`);
           }
         }
         nav.go('result', {
