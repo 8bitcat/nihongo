@@ -1,6 +1,20 @@
 # SESSION — Nihongo Quest
 
-Senast uppdaterad: 2026-08-31 (v3.0 — Ordmaraton/10k-ordbanken)
+Senast uppdaterad: 2026-09-01 (v3.1 — mangan begriplig: bilder, tryck-fram-text, quiz)
+
+## v3.1 — Mangaläsaren
+
+- **Pixelart-paneler**: 16 bilder (4 manga × 4 rutor) i [img/manga/](img/manga/), genererade av
+  scratchpad-skriptet `gen_manga_art.py` (PIL, 48×48 → 192px, gemensam palett/sprites —
+  katt/barn/hund/regn/säng osv). Panelen visar bilden (object-fit cover, pixelated) med
+  lodrät pratbubbla ovanpå; emoji (`p.img`) kvar som fallback om `p.pic` saknas.
+- **Infopanel under mangan** ([js/reading.js](js/reading.js)): varje läst ruta visar replikerna
+  med 🔊 + tryck-fram-knappar för **romaji** (startläge följer settings.showRomaji) och
+  **svenska**; tryck på en redan läst ruta byter infopanelen dit + spelar repliken.
+- **Läs- & ordförståelsetest**: efter recap → quiz med innehållsfrågor + ordfrågor
+  (`questions` + `vocab` per manga i [data/stories.js](data/stories.js); orddistraktorer
+  hämtas ur alla mangors vocab). Stjärnorna sätts nu av quizet (som sagorna), inte av
+  läsordningsklicken — felklicken redovisas i resultatdetaljen.
 
 ## v3.0 — Ordmaraton & 10 000-ordbanken
 

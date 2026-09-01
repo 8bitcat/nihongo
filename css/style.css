@@ -431,3 +431,11 @@ button.rain-exit { cursor: pointer; font-weight: 700; color: var(--red); min-wid
   color: var(--text); background: transparent; border: 1px solid transparent;
 }
 .kana-tap:hover, .kana-tap:active { border-color: var(--blue); color: var(--blue); }
+
+/* ---------- Manga-panelbilder (pixelart) ---------- */
+.manga-panel .p-pic {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; image-rendering: pixelated;
+}
+.manga-panel .p-sfx { z-index: 2; }
+.manga-panel .p-bubble { z-index: 2; box-shadow: 2px 2px 0 rgba(26,26,26,.25); }

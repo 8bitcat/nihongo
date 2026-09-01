@@ -5,7 +5,7 @@ import { el, escapeHTML, starsHTML, confetti } from './ui.js';
 import { speak, stopSpeech } from './audio.js';
 import { S, addXP, touchStreak, setLessonStars, lessonStars } from './state.js';
 import { track, checkAchievements, showToast } from './gamify.js';
-import { runDrill, mcQ } from './exercises.js';
+import { runDrill, mcQ, mcOptions } from './exercises.js';
 import { sentenceRomaji, shuffle } from './kanaUtils.js';
 import { MANGA, STORIES, ONOMATOPOEIA } from '../data/stories.js';
 
@@ -160,29 +160,71 @@ function practiceGrid(host, nav) {
 export function renderManga(root, nav, { mangaId }) {
   const manga = MANGA.find(m => m.id === mangaId);
   topbar(root, nav, manga.title + ' — ' + manga.titleSv);
-  root.appendChild(el('div', 'prompt-label center', 'Peka på rutorna i läsordning: uppe till höger → vänster. Rätt ruta läses upp!'));
+  root.appendChild(el('div', 'prompt-label center', 'Peka på rutorna i läsordning: uppe till höger → vänster. Texten dyker upp under mangan — tryck fram romaji och svenska om du behöver!'));
 
   const grid = el('div', 'manga-grid');
   const fb = el('div', 'feedback center');
+  const info = el('div');
   let expected = 0, mistakes = 0;
+  let currentPanel = -1;
+  let showR = S.settings.showRomaji !== false, showSv = false;
+
+  // Infopanelen: aktuell rutas repliker med tryck-fram romaji + svenska
+  const renderInfo = () => {
+    info.innerHTML = '';
+    if (currentPanel < 0) return;
+    const p = manga.panels[currentPanel];
+    const card = el('div', 'gram-card');
+    card.appendChild(el('h3', null, `Ruta ${currentPanel + 1}`));
+    for (const line of p.lines) {
+      const row = el('div', 'example');
+      row.innerHTML = `<div class="info"><div class="jp-line">${escapeHTML(line.jp)}</div>` +
+        (showR ? `<div class="romaji">${escapeHTML(sentenceRomaji(line.jp))}</div>` : '') +
+        (showSv ? `<div class="sv">${escapeHTML(line.sv)}</div>` : '') + '</div>';
+      const b = el('button', 'speakbtn', '🔊');
+      b.onclick = () => speak(line.jp, { rate: S.settings.slowAudio ? 0.7 : 0.85 });
+      row.appendChild(b);
+      card.appendChild(row);
+    }
+    if (p.sfx) {
+      card.appendChild(el('div', 'prompt-label',
+        `💥 Ljudord: <span class="jp">${escapeHTML(p.sfx.jp)}</span>` +
+        (showSv ? ' = ' + escapeHTML(p.sfx.sv) : '')));
+    }
+    const tools = el('div', 'drawtools');
+    const rBtn = el('button', 'btn secondary small', showR ? 'Dölj romaji' : 'Romaji');
+    rBtn.onclick = () => { showR = !showR; renderInfo(); };
+    const svBtn = el('button', 'btn secondary small', showSv ? 'Dölj svenska' : 'Svenska');
+    svBtn.onclick = () => { showSv = !showSv; renderInfo(); };
+    tools.appendChild(rBtn); tools.appendChild(svBtn);
+    card.appendChild(tools);
+    info.appendChild(card);
+  };
 
   manga.panels.forEach((p, i) => {
     const panel = el('button', 'manga-panel hidden-panel');
     panel.innerHTML = '<span class="p-q">？</span>';
+    const reveal = () => {
+      panel.innerHTML =
+        (p.pic ? `<img class="p-pic" src="${p.pic}" alt="">` : `<span class="p-img">${escapeHTML(p.img)}</span>`) +
+        (p.sfx ? `<span class="p-sfx jp">${escapeHTML(p.sfx.jp)}</span>` : '') +
+        `<span class="p-bubble jp">${escapeHTML(p.lines.map(l => l.jp).join('\n'))}</span>`;
+    };
     panel.onclick = () => {
-      if (i < expected) { // redan läst → spela repliken igen
+      if (i < expected) { // redan läst → visa i infopanelen + spela igen
+        currentPanel = i;
+        renderInfo();
         speak(p.lines.map(l => l.jp).join(' '), { rate: 0.85 });
         return;
       }
       if (i === expected) {
         panel.classList.remove('hidden-panel');
         panel.classList.add('read');
-        panel.innerHTML =
-          (p.sfx ? `<span class="p-sfx jp">${escapeHTML(p.sfx.jp)}</span>` : '') +
-          `<span class="p-img">${escapeHTML(p.img)}</span>` +
-          `<span class="p-bubble jp">${escapeHTML(p.lines.map(l => l.jp).join('\n'))}</span>`;
+        reveal();
         speak(p.lines.map(l => l.jp).join(' '), { rate: 0.85 });
         expected++;
+        currentPanel = i;
+        renderInfo();
         fb.textContent = '';
         if (expected === manga.panels.length) finish();
       } else {
@@ -197,16 +239,11 @@ export function renderManga(root, nav, { mangaId }) {
   });
   root.appendChild(grid);
   root.appendChild(fb);
+  root.appendChild(info);
 
   function finish() {
-    const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-    setLessonStars(mangaId, stars);
-    addXP(12 + stars * 4);
-    touchStreak();
-    track('lesson', 1);
-    checkAchievements();
     confetti();
-    // Recap: alla repliker med översättning
+    // Recap: alla repliker med översättning + vidare till frågorna
     const recap = el('div');
     recap.appendChild(el('div', 'sectionlabel', '📝 Vad sa de? (i läsordning)'));
     manga.panels.forEach((p, i) => {
@@ -222,19 +259,66 @@ export function renderManga(root, nav, { mangaId }) {
       }
     });
     const row = el('div', 'continue-row center');
-    const idx = MANGA.findIndex(m => m.id === mangaId);
-    if (MANGA[idx + 1]) {
-      const nx = el('button', 'btn', 'Nästa manga ›');
-      nx.onclick = () => nav.go('manga', { mangaId: MANGA[idx + 1].id });
-      row.appendChild(nx);
-      row.appendChild(document.createTextNode(' '));
-    }
-    const back = el('button', 'btn secondary', 'Klar');
-    back.onclick = () => nav.go('reading');
-    row.appendChild(back);
+    const quizBtn = el('button', 'btn', '❓ Frågor! ›');
+    quizBtn.onclick = () => startQuiz();
+    row.appendChild(quizBtn);
     recap.appendChild(row);
     root.appendChild(recap);
-    showToast(`📖 ${'★'.repeat(stars)} Manga läst! +${12 + stars * 4} XP`);
+    recap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Läs- och ordförståelsetest efter mangan — stjärnorna sätts här
+  function startQuiz() {
+    stopSpeech();
+    root.innerHTML = '';
+    topbar(root, nav, manga.titleSv + ' — frågor');
+    root.appendChild(el('div', 'sectionlabel center', '❓ Förstod du mangan?'));
+    const host = el('div');
+    root.appendChild(host);
+
+    const vocabPool = MANGA.flatMap(m => m.vocab || []);
+    const qs = [
+      ...(manga.questions || []).map(q => {
+        const opts = q.opts.map((o, i) => ({ o, i }));
+        const shuffled = shuffle(opts);
+        return mcQ({
+          prompt: escapeHTML(q.q),
+          options: shuffled.map(x => ({ label: x.o })),
+          correctIdx: shuffled.findIndex(x => x.i === q.correct),
+        });
+      }),
+      ...(manga.vocab || []).map(v => {
+        const { options, correctIdx } = mcOptions(v, vocabPool, 3, x => x.sv);
+        return mcQ({
+          prompt: 'Ordet fanns i mangan — vad betyder det?',
+          promptJP: v.jp, speakText: v.jp, autoSpeak: true,
+          options: options.map(o => ({ label: o.sv })), correctIdx,
+        });
+      }),
+    ];
+    runDrill(host, shuffle(qs), {
+      gradeSRS: false,
+      onFinish(res) {
+        const acc = res.correctFirstTry / res.total;
+        const stars = acc >= 0.99 ? 3 : acc >= 0.6 ? 2 : 1;
+        setLessonStars(mangaId, stars);
+        addXP(12 + stars * 4);
+        touchStreak();
+        track('lesson', 1);
+        checkAchievements();
+        confetti();
+        const idx = MANGA.findIndex(m => m.id === mangaId);
+        const nextM = MANGA[idx + 1];
+        nav.go('result', {
+          title: manga.titleSv + ' — läst!', stars,
+          detail: `${res.correctFirstTry} av ${res.total} rätt på frågorna` +
+            (mistakes > 0 ? ` · ${mistakes} felklick i läsordningen` : ' · perfekt läsordning!'),
+          backTo: 'reading',
+          nextTo: nextM ? 'manga' : null, nextParams: nextM ? { mangaId: nextM.id } : null,
+          nextLabel: 'Nästa manga ›',
+        });
+      },
+    });
   }
 }
 
